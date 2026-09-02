@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: crbap
+
+  datasource:
+    # Nenhum valor sensivel fica aqui. Os defaults servem so para o ambiente
+    # local; em qualquer outro lugar vem tudo do ambiente.
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/crbap}
+    username: ${DB_USER:crbap}
+    password: ${DB_PASSWORD:crbap}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 20000
+      # Loga a stack de quem segurou uma conexao por mais de 60s. E o jeito
+      # de achar transacao longa antes de o pool esgotar em producao.
+      leak-detection-threshold: 60000
+
+  jpa:
+    hibernate:
+      # O Hibernate CONFERE o schema, nunca o altera. Quem cria tabela e o Flyway.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
+    serialization:
+      write-dates-as-timestamps: false
+
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+  # Termina o que esta em andamento antes de morrer. Junto com o 'exec java'
+  # do Dockerfile, e o que faz o deploy nao cortar requisicao pela metade.
+  shutdown: graceful
+  error:
+    include-stacktrace: never
+    include-message: never
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui
+    operations-sorter: method
+
+crbap:
+  security:
+    issuer: crbap
+    audience: crbap-api
+    # PEM vindo do ambiente. Ausente fora de produção, um par efêmero é gerado
+    # na subida (e todo token cai a cada restart); no perfil prod, a aplicação
+    # se recusa a subir sem as chaves.
+    private-key: ${JWT_PRIVATE_KEY:}
+    public-key: ${JWT_PUBLIC_KEY:}
+    # Curto de propósito: token roubado tem validade de 15 minutos. Sessão
+    # longa é responsabilidade do refresh, que é rotacionado e revogável.
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+    max-failed-attempts: 5
+    lock-duration: 15m
+    login-attempts-per-minute: 5
+    admin-email: ${ADMIN_EMAIL:admin@crbap.local}
+    admin-initial-password: ${ADMIN_INITIAL_PASSWORD:}
+
+logging:
+  level:
+    root: INFO
+    com.caiocodes.crbap: INFO

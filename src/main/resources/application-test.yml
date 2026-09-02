@@ -1,0 +1,30 @@
+# Usado pelos testes de integracao. A URL do banco NAO fica aqui: quem
+# preenche e o @DynamicPropertySource do AbstractIntegrationTest, com o
+# endereco do container que o Testcontainers subiu.
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    clean-disabled: false
+
+crbap:
+  security:
+    # Números baixos deixam o teste de bloqueio e o de rate limit rápidos e
+    # legíveis — sem eles seriam 5 chamadas só para chegar na fronteira.
+    max-failed-attempts: 3
+    lock-duration: 5m
+    # Alto de propósito: o contador de rate limit vive no Redis e é
+    # compartilhado por TODAS as classes de teste (o container é singleton).
+    # Com um valor baixo aqui, uma classe consumiria a cota da seguinte e os
+    # testes ficariam intermitentes conforme a ordem de execução. Quem exercita
+    # o limite de verdade é o LoginRateLimitIT, que o baixa só no contexto dele.
+    login-attempts-per-minute: 1000
+    access-token-ttl: 15m
+    refresh-token-ttl: 1d
+    admin-initial-password: ""
+
+logging:
+  level:
+    com.caiocodes.crbap: DEBUG
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
