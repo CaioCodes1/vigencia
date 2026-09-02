@@ -17,7 +17,8 @@ INSERT INTO permissions (id, name, resource, action, description)
 SELECT gen_random_uuid(), p.name, split_part(p.name, ':', 1), split_part(p.name, ':', 2), p.description
 FROM (VALUES
     ('client:create',          'Cadastrar cliente'),
-    ('client:read',            'Consultar clientes'),
+    ('client:read',            'Consultar clientes (restrito à própria carteira)'),
+    ('client:read_all',        'Ver clientes de todas as carteiras'),
     ('client:read_sensitive',  'Ver documento completo do cliente (sem máscara)'),
     ('client:update',          'Atualizar cliente'),
     ('client:delete',          'Desativar cliente'),
@@ -93,6 +94,7 @@ SELECT r.id, p.id
 FROM (VALUES
     -- MANAGER — gestor comercial
     ('MANAGER', 'client:create'),      ('MANAGER', 'client:read'),
+    ('MANAGER', 'client:read_all'),
     ('MANAGER', 'client:update'),      ('MANAGER', 'client:delete'),
     ('MANAGER', 'contract:create'),    ('MANAGER', 'contract:read'),
     ('MANAGER', 'contract:update'),    ('MANAGER', 'contract:activate'),
@@ -102,7 +104,8 @@ FROM (VALUES
     ('MANAGER', 'dashboard:read'),     ('MANAGER', 'dashboard:read_all'),
 
     -- FINANCE — dinheiro entra e sai por aqui, mas não mexe em contrato
-    ('FINANCE', 'client:read'),        ('FINANCE', 'client:read_sensitive'),
+    ('FINANCE', 'client:read'),        ('FINANCE', 'client:read_all'),
+    ('FINANCE', 'client:read_sensitive'),
     ('FINANCE', 'contract:read'),
     ('FINANCE', 'billing:create'),     ('FINANCE', 'billing:read'),
     ('FINANCE', 'billing:cancel'),
@@ -117,13 +120,14 @@ FROM (VALUES
     ('SALES', 'dashboard:read'),
 
     -- INTEGRATION — conta de sistema, escrita só em pagamento
-    ('INTEGRATION', 'client:read'),
+    ('INTEGRATION', 'client:read'),    ('INTEGRATION', 'client:read_all'),
     ('INTEGRATION', 'contract:read'),
     ('INTEGRATION', 'billing:read'),
     ('INTEGRATION', 'payment:create'),
 
     -- AUDITOR — leitura de tudo, escrita de nada
-    ('AUDITOR', 'client:read'),        ('AUDITOR', 'client:read_sensitive'),
+    ('AUDITOR', 'client:read'),        ('AUDITOR', 'client:read_all'),
+    ('AUDITOR', 'client:read_sensitive'),
     ('AUDITOR', 'contract:read'),      ('AUDITOR', 'billing:read'),
     ('AUDITOR', 'notification:read'),
     ('AUDITOR', 'dashboard:read'),     ('AUDITOR', 'dashboard:read_all'),

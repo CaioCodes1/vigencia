@@ -109,6 +109,15 @@ crbap:
     admin-email: ${ADMIN_EMAIL:admin@crbap.local}
     admin-initial-password: ${ADMIN_INITIAL_PASSWORD:}
 
+  crypto:
+    # 32 bytes em base64 (openssl rand -base64 32). Duas chaves separadas de
+    # propósito: cifra e índice cego têm propósitos diferentes, e reaproveitar
+    # a mesma comprometeria as duas funções de uma vez.
+    # ATENÇÃO: perder data-key = perder os documentos cifrados. O backup da
+    # chave é tão crítico quanto o backup do banco.
+    data-key: ${DATA_ENCRYPTION_KEY:}
+    index-key: ${BLIND_INDEX_KEY:}
+
 logging:
   level:
     root: INFO

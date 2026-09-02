@@ -7,17 +7,20 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1 e 2 de 8 concluídas (01–02/09/2026).** 121 testes verdes
-> (82 unitários + 39 de integração), 0 violações de Checkstyle.
+> **Estado: fases 1, 2 e 3 de 8 concluídas (01–02/09/2026).** 156 testes verdes
+> (103 unitários + 53 de integração), 0 violações de Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
 > - **Fase 2** — IAM completo: Argon2id, JWT RS256, refresh com rotação e
 >   detecção de reuso, logout com denylist no Redis, bloqueio de conta, rate
->   limit, RBAC (30 permissões, 6 papéis), `deny by default`.
+>   limit, RBAC (31 permissões, 6 papéis), `deny by default`.
+> - **Fase 3** — clientes: agregado `Client` com contatos, documento cifrado em
+>   repouso (AES-256-GCM) + índice cego HMAC para busca e unicidade, escopo por
+>   carteira, busca sem acento e desativação lógica com recadastro.
 >
-> **Próxima: fase 3 (clientes).** Cliente, contrato, cobrança, notificação e
-> dashboard ainda não existem.
+> **Próxima: fase 4 (contratos).** Contrato, cobrança, notificação e dashboard
+> ainda não existem.
 
 ## Rodar
 
@@ -110,6 +113,20 @@ geram "conserto" indevido:
   `prod` a aplicação **falha ao subir**. Ver ADR-014.
 - **Rate limit é contador de janela fixa (`INCR`+`EXPIRE`), não Bucket4j.**
   Ver ADR-013 — a rajada de virada de janela é aceita conscientemente.
+- **O documento do cliente é cifrado (AES-256-GCM) e indexado por HMAC.** São
+  duas colunas: `document_enc` (não pesquisável) e `document_index` (busca e
+  unicidade). Perder `DATA_ENCRYPTION_KEY` = perder os documentos; o backup da
+  chave é tão crítico quanto o do banco.
+- **`accountManagerId` não é filtro de query em `/clients`.** Aceitar seria dar
+  ao vendedor exatamente o parâmetro para ler a carteira alheia. O escopo vem do
+  token via a porta `CurrentUser` (declarada em `shared/application`,
+  implementada pelo `iam`). Vale também na escrita: o `accountManagerId` enviado
+  no corpo é ignorado para quem não tem `client:read_all`.
+- **A listagem devolve `ClientListItem`, não o agregado.** Carregar `Client`
+  inteiro numa página de 20 traria 20 listas de contatos que a tela não mostra.
+- **`NoContractsYetAdapter` é temporário.** Implementa `ClientContractsPort`
+  respondendo sempre "não há contratos" para a regra RF-03 já existir e ser
+  testável. **Na fase 4 esta classe é apagada** e o módulo `contract` assume.
 - **JaCoCo com `jacoco.check.skip=true`.** A meta de 80% liga na fase 4, quando
   existir lógica suficiente para ela significar alguma coisa.
 
@@ -136,8 +153,13 @@ Específicas deste projeto:
 - **`git init` + primeiro commit + publicar em `CaioCodes1/`** — maior risco
   hoje: o projeto inteiro (duas fases) vive só em disco local, exatamente a
   situação do `bank-api`.
-- Fase 3 (clientes) é a próxima: agregado `Client`, criptografia de campo
-  (AES-GCM) e o blind index HMAC para busca.
+- Fase 4 (contratos) é a próxima: agregado `Contract` com máquina de estados,
+  renovação encadeada e a varredura diária de vencimentos. Apagar o
+  `NoContractsYetAdapter` junto.
+- **Ambiente:** o pagefile do Windows continua fixo em 800 MB no `C:`, o que dá
+  um limite de commit de ~17 GB. Em 02/09 isso derrubou o Docker duas vezes e
+  matou o Maven com `insufficient memory`. Ver a seção Discos do
+  `E:\projetos\CLAUDE.md` — precisa de admin e reboot.
 - Falta gestão de usuários pela API (`POST /users`, conceder/revogar papéis).
   Hoje só existe leitura; usuário novo depende do `AdminBootstrap`.
 - O limite de rate limit **por e-mail** (além do por IP) ainda não existe.

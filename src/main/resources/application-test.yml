@@ -23,6 +23,14 @@ crbap:
     refresh-token-ttl: 1d
     admin-initial-password: ""
 
+  crypto:
+    # Chaves FIXAS e públicas, exclusivas do perfil de teste. Não são segredo:
+    # existem para que os vários contextos do Spring que a suíte levanta
+    # cifrem e decifrem os mesmos dados. Com chaves efêmeras, um contexto não
+    # leria o que o outro gravou.
+    data-key: "Y3JiYXAtY2hhdmUtZGUtdGVzdGUtZGFkb3MtLTMyYnk="
+    index-key: "Y3JiYXAtY2hhdmUtZGUtdGVzdGUtaW5kaWNlLTMyYnk="
+
 logging:
   level:
     com.caiocodes.crbap: DEBUG

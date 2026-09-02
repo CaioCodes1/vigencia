@@ -20,10 +20,14 @@ Testcontainers**
 > denylist no Redis, bloqueio de conta por tentativas, rate limit por IP, RBAC
 > com 30 permissões e 6 papéis, e `deny by default` em toda a API.
 >
-> **Ainda não existe:** cliente, contrato, cobrança, notificação e dashboard —
-> fases 3 a 7.
+> **Fase 3 (clientes):** agregado `Client` com contatos, documento **cifrado em
+> repouso** (AES-256-GCM) com índice cego HMAC para busca e unicidade, escopo
+> por carteira, busca sem acento e desativação lógica que libera o documento
+> para recadastro.
 >
-> **121 testes verdes** (82 unitários + 39 de integração), 0 violações de
+> **Ainda não existe:** contrato, cobrança, notificação e dashboard — fases 4 a 7.
+>
+> **156 testes verdes** (103 unitários + 53 de integração), 0 violações de
 > Checkstyle.
 
 ## Endpoints disponíveis hoje
@@ -36,6 +40,13 @@ Testcontainers**
 | GET | `/api/v1/auth/me` | autenticado |
 | POST | `/api/v1/auth/change-password` | autenticado |
 | GET | `/api/v1/users` · `/api/v1/users/{id}` | permissão `user:read` |
+| POST | `/api/v1/clients` | `client:create` |
+| GET | `/api/v1/clients?search=&status=&page=&size=` | `client:read` (restrito à carteira) |
+| GET | `/api/v1/clients/{id}` | `client:read` (404 fora da carteira) |
+| PATCH | `/api/v1/clients/{id}` | `client:update` |
+| POST | `/api/v1/clients/{id}/contacts` | `client:update` |
+| DELETE | `/api/v1/clients/{id}` | `client:delete` (desativação lógica) |
+| POST | `/api/v1/clients/{id}/reactivate` | `client:update` |
 | GET | `/actuator/health` | público |
 
 ---
