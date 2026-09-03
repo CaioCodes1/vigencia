@@ -150,16 +150,17 @@ Específicas deste projeto:
 
 ## Pendências
 
-- **`git init` + primeiro commit + publicar em `CaioCodes1/`** — maior risco
-  hoje: o projeto inteiro (duas fases) vive só em disco local, exatamente a
-  situação do `bank-api`.
+- **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
+  commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
+  situação do `bank-api`: existe só neste disco.
 - Fase 4 (contratos) é a próxima: agregado `Contract` com máquina de estados,
   renovação encadeada e a varredura diária de vencimentos. Apagar o
   `NoContractsYetAdapter` junto.
-- **Ambiente:** o pagefile do Windows continua fixo em 800 MB no `C:`, o que dá
-  um limite de commit de ~17 GB. Em 02/09 isso derrubou o Docker duas vezes e
-  matou o Maven com `insufficient memory`. Ver a seção Discos do
-  `E:\projetos\CLAUDE.md` — precisa de admin e reboot.
+- **Ambiente (resolvido em 02/09):** o Maven morria com `insufficient memory` e
+  o Docker caía junto porque o limite de commit do Windows era ~17 GB (pagefile
+  de 800 MB). Com o `D:` em **tamanho fixo de 16 GB**, o limite foi para 36 GB.
+  Se voltar a acontecer, **medir o commit antes de culpar o Docker** — ver a
+  seção Discos do `E:\projetos\CLAUDE.md`.
 - Falta gestão de usuários pela API (`POST /users`, conceder/revogar papéis).
   Hoje só existe leitura; usuário novo depende do `AdminBootstrap`.
 - O limite de rate limit **por e-mail** (além do por IP) ainda não existe.
