@@ -1,6 +1,7 @@
 package com.caiocodes.crbap.client.infrastructure;
 
 import com.caiocodes.crbap.client.domain.Client;
+import com.caiocodes.crbap.client.domain.ClientContact;
 import com.caiocodes.crbap.client.domain.ClientId;
 import com.caiocodes.crbap.client.domain.ClientRepository;
 import com.caiocodes.crbap.shared.application.ClientDirectory;
@@ -30,6 +31,7 @@ public class ClientDirectoryAdapter implements ClientDirectory {
 
     private static ClientRef toRef(Client client) {
         return new ClientRef(client.id().value(), client.legalName(), client.isActive(),
-                client.accountManagerId());
+                client.accountManagerId(), client.email(),
+                client.primaryContact().map(ClientContact::email).orElse(null));
     }
 }

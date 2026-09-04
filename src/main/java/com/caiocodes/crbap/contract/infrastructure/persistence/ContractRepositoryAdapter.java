@@ -88,6 +88,13 @@ class ContractRepositoryAdapter implements ContractRepository {
                 .toList();
     }
 
+    @Override
+    public List<ContractId> findAutoRenewableEndingOn(LocalDate today) {
+        return jpa.findIdsAutoRenewableEndingOn(ContractStatusValue.ACTIVE, today).stream()
+                .map(ContractId::of)
+                .toList();
+    }
+
     /** Devolve o agregado recebido — mesma escolha dos adaptadores do IAM. */
     @Override
     public Contract save(Contract contract) {

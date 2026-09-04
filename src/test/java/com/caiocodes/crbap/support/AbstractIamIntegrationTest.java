@@ -49,6 +49,7 @@ public abstract class AbstractIamIntegrationTest extends AbstractIntegrationTest
         // Dos filhos para os pais: pagamento depende de cobrança, que depende de
         // contrato e cliente, que dependem de usuário. Inverter a ordem faz o
         // Postgres recusar o DELETE, e o erro fala de constraint, não de teste.
+        jdbc.update("DELETE FROM notifications");
         jdbc.update("DELETE FROM payments");
         jdbc.update("DELETE FROM billings");
         jdbc.update("DELETE FROM contracts");

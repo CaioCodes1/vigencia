@@ -51,7 +51,7 @@ public final class BillingEvents {
      */
     public record PaymentRegistered(
             UUID eventId, Instant occurredAt, UUID aggregateId,
-            UUID paymentId, UUID clientId, UUID contractId,
+            UUID paymentId, UUID clientId, UUID contractId, String reference,
             BigDecimal amount, String currency, String method,
             BigDecimal totalPaid, BigDecimal remaining, boolean settled)
             implements DomainEvent {

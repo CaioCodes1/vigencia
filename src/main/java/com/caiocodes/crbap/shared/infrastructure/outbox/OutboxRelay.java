@@ -36,6 +36,16 @@ public class OutboxRelay {
     private final DomainEventPublisher publisher;
     private final Clock clock;
 
+    /**
+     * <b>Sem {@code @SchedulerLock} de propósito</b>, ao contrário dos outros
+     * jobs.
+     *
+     * <p>A trava do ShedLock é exclusão: uma instância roda, as outras pulam.
+     * Aqui o {@code FOR UPDATE SKIP LOCKED} da consulta faz algo melhor — cada
+     * instância pega um pedaço disjunto da fila e as duas trabalham em
+     * paralelo. Pôr a trava por cima serializaria o relay e desfaria
+     * exatamente o motivo de o {@code SKIP LOCKED} existir.
+     */
     @Scheduled(fixedDelayString = "${crbap.jobs.outbox-relay-delay:5000}")
     @Transactional
     public void publishPending() {

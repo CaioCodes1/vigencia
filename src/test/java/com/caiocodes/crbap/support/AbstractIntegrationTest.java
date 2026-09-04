@@ -9,6 +9,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.RabbitMQContainer;
 
 /**
  * Base dos testes de integração (*IT).
@@ -44,9 +45,23 @@ public abstract class AbstractIntegrationTest {
     protected static final GenericContainer<?> REDIS =
             new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
+    /**
+     * O broker entra na suíte a partir da fase 6.
+     *
+     * <p>Sem ele o {@code /actuator/health} responderia DOWN — o starter de AMQP
+     * registra um health indicator — e o {@code HealthCheckIT} passaria a
+     * reprovar por um motivo que não tem nada a ver com o que ele testa.
+     *
+     * <p>Imagem sem o plugin de management: a suíte não abre painel nenhum, e a
+     * versão enxuta sobe em segundos em vez de dezenas deles.
+     */
+    protected static final RabbitMQContainer RABBIT =
+            new RabbitMQContainer("rabbitmq:3.13-alpine");
+
     static {
         POSTGRES.start();
         REDIS.start();
+        RABBIT.start();
     }
 
     @Autowired
@@ -60,5 +75,9 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
         registry.add("spring.data.redis.password", () -> "");
+        registry.add("spring.rabbitmq.host", RABBIT::getHost);
+        registry.add("spring.rabbitmq.port", RABBIT::getAmqpPort);
+        registry.add("spring.rabbitmq.username", RABBIT::getAdminUsername);
+        registry.add("spring.rabbitmq.password", RABBIT::getAdminPassword);
     }
 }

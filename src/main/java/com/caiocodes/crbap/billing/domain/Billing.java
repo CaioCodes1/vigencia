@@ -127,7 +127,7 @@ public class Billing extends AggregateRoot<BillingId> {
 
         register(new PaymentRegistered(BillingEvents.nextEventId(),
                 BillingEvents.nowForMetadata(), id.value(), payment.id(), clientId, contractId,
-                paid.amount(), paid.currency().getCurrencyCode(), method.name(),
+                reference, paid.amount(), paid.currency().getCurrencyCode(), method.name(),
                 totalPaid().amount(), remaining().amount(), status == BillingStatus.PAID));
         return payment;
     }

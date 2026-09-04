@@ -33,6 +33,13 @@ interface ContractJpaRepository extends JpaRepository<ContractEntity, UUID> {
     @Query("SELECT c.id FROM ContractEntity c WHERE c.status = :status AND c.endDate < :today")
     List<UUID> findIdsByStatusAndEndDateBefore(ContractStatusValue status, LocalDate today);
 
+    /** Cai no idx_contracts_autorenew, que é parcial em (status ACTIVE AND auto_renew). */
+    @Query("""
+            SELECT c.id FROM ContractEntity c
+             WHERE c.status = :status AND c.autoRenew = true AND c.endDate = :today
+            """)
+    List<UUID> findIdsAutoRenewableEndingOn(ContractStatusValue status, LocalDate today);
+
     /**
      * Busca da listagem.
      *

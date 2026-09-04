@@ -1,0 +1,30 @@
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #222;
+            max-width: 600px; margin: 0 auto;">
+  <h2 style="font-size: 18px; color: #8a2020;" th:text="${subject}">Contrato vencido</h2>
+
+  <p>Olá,</p>
+
+  <p>
+    O contrato <strong th:text="${contractNumber}">CT-2026-0042</strong>
+    (<span th:text="${contractTitle}">Licença Enterprise</span>)
+    venceu em <strong th:text="${endDateFormatted}">30/09/2027</strong>
+    e não foi renovado.
+  </p>
+
+  <table cellpadding="6" cellspacing="0"
+         style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+    <tr>
+      <td style="color: #666;">Valor do contrato</td>
+      <td th:text="${amountFormatted}">R$ 24.000,00</td>
+    </tr>
+  </table>
+
+  <p>
+    A renovação ainda é possível por <strong>30 dias</strong> após o vencimento,
+    mantendo o histórico do contrato. Depois desse prazo, será necessário um
+    contrato novo.
+  </p>
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+  <p style="font-size: 12px; color: #777;">Mensagem automática — não responda.</p>
+</div>

@@ -140,7 +140,8 @@ class RenewContractUseCaseTest {
     }
 
     private static ClientRef clienteAtivo(boolean ativo) {
-        return new ClientRef(CLIENTE, "Acme Comércio Ltda", ativo, null);
+        return new ClientRef(CLIENTE, "Acme Comércio Ltda", ativo, null,
+                "financeiro@acme.com", null);
     }
 
     private static Contract umContratoAtivo() {

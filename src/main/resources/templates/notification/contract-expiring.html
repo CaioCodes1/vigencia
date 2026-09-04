@@ -1,0 +1,54 @@
+<!--
+  As datas e o valor chegam JA FORMATADOS no payload, e nao como data crua.
+
+  Dois motivos: formatar no Java e testavel num teste unitario, e o payload
+  gravado em JSONB passa a conter exatamente o texto que saiu no e-mail — que
+  e o que responde "que aviso voces me mandaram?" meses depois, sem depender
+  de o template de hoje ser o mesmo de entao.
+-->
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #222;
+            max-width: 600px; margin: 0 auto;">
+  <h2 style="font-size: 18px;" th:text="${subject}">Contrato vencendo</h2>
+
+  <p>Olá,</p>
+
+  <!--
+    th:text escapa HTML. E o que impede um cliente cadastrado como
+    <script>...</script> de virar script no cliente de e-mail de quem abrir.
+    Nunca trocar por th:utext.
+  -->
+  <p>
+    O contrato <strong th:text="${contractNumber}">CT-2026-0042</strong>
+    (<span th:text="${contractTitle}">Licença Enterprise</span>)
+    <span th:if="${daysOffset == 1}">vence <strong>amanhã</strong></span>
+    <span th:unless="${daysOffset == 1}">vence em
+      <strong th:text="${daysOffset}">30</strong> dias</span>,
+    em <strong th:text="${endDateFormatted}">30/09/2027</strong>.
+  </p>
+
+  <table cellpadding="6" cellspacing="0"
+         style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+    <tr>
+      <td style="color: #666;">Vigência</td>
+      <td>
+        <span th:text="${startDateFormatted}">01/10/2026</span> a
+        <span th:text="${endDateFormatted}">30/09/2027</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="color: #666;">Valor</td>
+      <td th:text="${amountFormatted}">R$ 24.000,00</td>
+    </tr>
+  </table>
+
+  <p th:if="${autoRenew}" style="color: #1a6b2a;">
+    Este contrato tem <strong>renovação automática</strong> e será renovado no
+    vencimento, salvo manifestação em contrário.
+  </p>
+  <p th:unless="${autoRenew}">
+    Para renovar, entre em contato com o gestor da sua conta.
+  </p>
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+  <p style="font-size: 12px; color: #777;">Mensagem automática — não responda.</p>
+</div>

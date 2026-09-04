@@ -1,0 +1,31 @@
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #222;
+            max-width: 600px; margin: 0 auto;">
+  <h2 style="font-size: 18px; color: #8a2020;" th:text="${subject}">Cobrança em atraso</h2>
+
+  <p>Olá,</p>
+
+  <p>
+    A cobrança <strong th:text="${reference}">CT-2026-0042 3/12</strong> venceu em
+    <strong th:text="${dueDateFormatted}">10/09/2026</strong> e consta em aberto.
+  </p>
+
+  <table cellpadding="6" cellspacing="0"
+         style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+    <tr>
+      <td style="color: #666;">Saldo devedor</td>
+      <td th:text="${remainingFormatted}">R$ 2.000,00</td>
+    </tr>
+    <tr>
+      <td style="color: #666;">Dias em atraso</td>
+      <td th:text="${daysLate}">7</td>
+    </tr>
+  </table>
+
+  <p>
+    Se o pagamento já foi feito, desconsidere este aviso — a baixa pode levar
+    até um dia útil para aparecer.
+  </p>
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+  <p style="font-size: 12px; color: #777;">Mensagem automática — não responda.</p>
+</div>

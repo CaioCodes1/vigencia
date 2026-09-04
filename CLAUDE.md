@@ -7,8 +7,8 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1 a 5 de 8 concluídas (01–04/09/2026).** 279 testes verdes
-> (188 unitários + 91 de integração), 0 violações de Checkstyle.
+> **Estado: fases 1 a 6 de 8 concluídas (01–04/09/2026).** 310 testes verdes
+> (207 unitários + 103 de integração), 0 violações de Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
@@ -26,9 +26,13 @@ código nas fases 2 e 6.
 >   (ADR-006), pagamento parcial com `Idempotency-Key` e lock, estorno que marca
 >   em vez de apagar, varredura diária de inadimplência e o cálculo de parcelas
 >   com a sobra de centavos na última.
+> - **Fase 6** — notificações: régua D-30/15/7/1 e D+1/D+7, envio separado do
+>   agendamento, log de envio com reenvio manual, auto-renovação antes da
+>   expiração, ShedLock nos jobs, RabbitMQ com DLQ e os consumidores de contrato
+>   e de cobrança. **É aqui que o produto passa a existir** — tudo antes disto a
+>   planilha também fazia, mal; o que ela nunca fez foi avisar sozinha.
 >
-> **Próxima: fase 6 (scheduler e notificações).** Notificação e dashboard ainda
-> não existem, e o relay da outbox ainda publica no log em vez do RabbitMQ.
+> **Próxima: fase 7 (dashboard e auditoria).** `AuditLog` ainda não existe.
 
 ## Rodar
 
@@ -232,6 +236,49 @@ Fase 5 (cobranças):
   papel exercitava o escopo de carteira em cobranças, e a regra existia sem
   ninguém poder alcançá-la.
 
+Fase 6 (notificações):
+
+- **`scheduleIfAbsent` usa `INSERT ... ON CONFLICT DO NOTHING`, não
+  `try/catch`.** No Postgres, o primeiro comando que falha **envenena a
+  transação inteira** — todo comando seguinte responde `current transaction is
+  aborted`. Capturar `DataIntegrityViolationException` não desfaz isso. O bug
+  real: o aviso vai para dois destinatários; na segunda rodada do job o primeiro
+  `INSERT` era "tratado" e o segundo derrubava a varredura. **Não voltar para o
+  try/catch** — ver ADR-022.
+- **Agendar e enviar são jobs separados** (ADR-020). O SMTP fora do ar às 3h não
+  pode impedir o sistema de *saber* quem precisa ser avisado.
+- **A janela é exata, nunca `<= 30`.** Com "menor ou igual", o mesmo aviso sai
+  todo dia por trinta dias — e passa em todo teste de caso feliz.
+- **O `recipient` faz parte da chave de unicidade.** O mesmo aviso vai para o
+  contato do cliente *e* para o gestor: duas linhas legítimas da mesma janela.
+- **Três índices de deduplicação, não um** — por janela (contrato), por janela
+  (cobrança, sem `PAYMENT_RECEIVED`) e por `payload->>'eventId'`. Dois pagamentos
+  parciais **devem** gerar dois recibos; "vencida há 7 dias" não pode repetir.
+- **O relay da outbox NÃO tem `@SchedulerLock`**, ao contrário dos outros jobs.
+  A trava é exclusão; o `FOR UPDATE SKIP LOCKED` é partição. Pôr a trava por
+  cima serializa o relay e desfaz o motivo de o `SKIP LOCKED` existir. Isto foi
+  escrito errado uma vez e revertido — ver ADR-021.
+- **ShedLock com `usingDbTime()`.** A referência de tempo é o relógio do banco:
+  três máquinas com relógios diferentes calculando janelas diferentes anula o
+  propósito de ter uma trava central.
+- **Auto-renovação roda ANTES da expiração.** Invertido, o cliente recebe "seu
+  contrato venceu" e, um minuto depois, "seu contrato foi renovado".
+- **`ContractAutoRenewer` não passa pelo `ContractFinder`.** Job não tem
+  carteira — é o sistema agindo, e forçar um usuário técnico só para satisfazer
+  o filtro seria contornar a regra em vez de reconhecer que ela não se aplica.
+- **Formatação de data e dinheiro acontece no Java, não no template.** O texto
+  formatado fica gravado no payload JSONB, então "que aviso vocês me mandaram?"
+  tem resposta exata mesmo que o template mude depois.
+- **`th:text`, nunca `th:utext`.** É o escaping do Thymeleaf que impede um nome
+  de cliente malicioso de virar script no cliente de e-mail de quem abrir.
+- **`crbap.notification.smtp-enabled` é `false` por padrão.** Ligar isso sem
+  querer com um dump de produção dispara aviso de verdade para cliente de
+  verdade.
+- **`ExpiringContractsPort` é declarada em `notification`** e implementada por
+  `contract`: "quem eu preciso avisar hoje?" é pergunta de notificações.
+- **`findByIdForUpdate` do billing e o `EntityGraph`** continuam separados — a
+  mesma armadilha da fase 5 vale para qualquer agregado com coleção.
+
 ## Convenções
 
 Seguem as da raiz (`E:\projetos\CLAUDE.md`): documentação, comentários e
@@ -255,12 +302,11 @@ Específicas deste projeto:
 - **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
   commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
-- Fase 6 (scheduler e notificações) é a próxima. Falta a régua D-30/15/7/1, o
-  RabbitMQ e o ShedLock — hoje os dois jobs rodam em toda instância, e a
-  proteção é o agregado recusar a transição repetida.
-- **`LoggingDomainEventPublisher` é provisório.** Na fase 6 é apagado e o
-  publicador do RabbitMQ assume; não há `@ConditionalOnMissingBean` de
-  propósito, para não existirem dois publicadores vivos sem ninguém decidir.
+- Fase 7 (dashboard e auditoria) é a próxima. O `AuditLog` ainda não existe, e o
+  painel vai precisar do cache no Redis que a nota 11 descreve.
+- **A suíte de integração agora sobe três containers** (Postgres, Redis,
+  RabbitMQ). Antes de rodar, subir o Docker com `D:\dev-tools\subir-docker.ps1`
+  e conferir a folga de commit — ver a seção Ambiente abaixo.
 - **`contract_items` não foi criada.** O DDL da nota 07 a prevê, mas o agregado
   não tem itens e tabela sem código é peso morto. Entra quando houver caso de uso.
 - **`GET /clients/{id}/contracts` não existe** — use `GET /contracts?clientId=`.

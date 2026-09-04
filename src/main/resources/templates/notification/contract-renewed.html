@@ -1,0 +1,30 @@
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #222;
+            max-width: 600px; margin: 0 auto;">
+  <h2 style="font-size: 18px; color: #1a6b2a;" th:text="${subject}">Contrato renovado</h2>
+
+  <p>Olá,</p>
+
+  <p>
+    O contrato <strong th:text="${previousNumber}">CT-2026-0042</strong> foi
+    renovado. O novo contrato é o
+    <strong th:text="${contractNumber}">CT-2026-0042-R1</strong>.
+  </p>
+
+  <table cellpadding="6" cellspacing="0"
+         style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+    <tr>
+      <td style="color: #666;">Nova vigência</td>
+      <td>
+        <span th:text="${startDateFormatted}">01/10/2027</span> a
+        <span th:text="${endDateFormatted}">30/09/2028</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="color: #666;">Novo valor</td>
+      <td th:text="${amountFormatted}">R$ 26.400,00</td>
+    </tr>
+  </table>
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+  <p style="font-size: 12px; color: #777;">Mensagem automática — não responda.</p>
+</div>

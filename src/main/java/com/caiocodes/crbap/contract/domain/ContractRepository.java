@@ -49,5 +49,13 @@ public interface ContractRepository {
     /** Os ativos cujo fim já passou. Entrada do job diário de expiração. */
     List<ContractId> findActiveExpiredOn(LocalDate today);
 
+    /**
+     * Os ativos com renovação automática que terminam exatamente hoje.
+     *
+     * <p>Exatamente hoje, e não "até hoje": um contrato que passou da data sem
+     * ser renovado já virou problema para decisão humana, não para o job.
+     */
+    List<ContractId> findAutoRenewableEndingOn(LocalDate today);
+
     Contract save(Contract contract);
 }

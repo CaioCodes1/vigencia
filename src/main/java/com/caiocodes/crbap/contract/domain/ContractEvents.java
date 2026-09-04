@@ -79,7 +79,7 @@ public final class ContractEvents {
      */
     public record ContractRenewed(
             UUID eventId, Instant occurredAt, UUID aggregateId,
-            UUID newContractId, UUID clientId, String newNumber,
+            UUID newContractId, UUID clientId, String previousNumber, String newNumber,
             BigDecimal amount, String currency,
             LocalDate startDate, LocalDate endDate)
             implements DomainEvent {

@@ -174,7 +174,8 @@ public class Contract extends AggregateRoot<ContractId> {
         this.status = ContractStatus.RENEWED;
         register(new ContractRenewed(ContractEvents.nextEventId(),
                 ContractEvents.nowForMetadata(), id.value(), next.id.value(), clientId,
-                next.number, newValue.amount(), newValue.currency().getCurrencyCode(),
+                this.number, next.number, newValue.amount(),
+                newValue.currency().getCurrencyCode(),
                 newPeriod.start(), newPeriod.end()));
         return next;
     }
