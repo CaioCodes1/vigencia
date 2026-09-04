@@ -33,6 +33,7 @@ FROM (VALUES
 
     ('billing:create',         'Criar cobrança'),
     ('billing:read',           'Consultar cobranças'),
+    ('billing:read_all',       'Ver cobranças de todas as carteiras'),
     ('billing:cancel',         'Cancelar cobrança'),
 
     ('payment:create',         'Registrar pagamento'),
@@ -102,6 +103,7 @@ FROM (VALUES
     ('MANAGER', 'contract:update'),    ('MANAGER', 'contract:activate'),
     ('MANAGER', 'contract:renew'),     ('MANAGER', 'contract:cancel'),
     ('MANAGER', 'billing:create'),     ('MANAGER', 'billing:read'),
+    ('MANAGER', 'billing:read_all'),
     ('MANAGER', 'notification:read'),  ('MANAGER', 'notification:send'),
     ('MANAGER', 'dashboard:read'),     ('MANAGER', 'dashboard:read_all'),
 
@@ -110,6 +112,7 @@ FROM (VALUES
     ('FINANCE', 'client:read_sensitive'),
     ('FINANCE', 'contract:read'),      ('FINANCE', 'contract:read_all'),
     ('FINANCE', 'billing:create'),     ('FINANCE', 'billing:read'),
+    ('FINANCE', 'billing:read_all'),
     ('FINANCE', 'billing:cancel'),
     ('FINANCE', 'payment:create'),     ('FINANCE', 'payment:refund'),
     ('FINANCE', 'notification:read'),
@@ -119,19 +122,20 @@ FROM (VALUES
     ('SALES', 'client:create'),        ('SALES', 'client:read'),
     ('SALES', 'client:update'),
     ('SALES', 'contract:create'),      ('SALES', 'contract:read'),
+    ('SALES', 'billing:read'),
     ('SALES', 'dashboard:read'),
 
     -- INTEGRATION — conta de sistema, escrita só em pagamento
     ('INTEGRATION', 'client:read'),    ('INTEGRATION', 'client:read_all'),
     ('INTEGRATION', 'contract:read'), ('INTEGRATION', 'contract:read_all'),
-    ('INTEGRATION', 'billing:read'),
+    ('INTEGRATION', 'billing:read'), ('INTEGRATION', 'billing:read_all'),
     ('INTEGRATION', 'payment:create'),
 
     -- AUDITOR — leitura de tudo, escrita de nada
     ('AUDITOR', 'client:read'),        ('AUDITOR', 'client:read_all'),
     ('AUDITOR', 'client:read_sensitive'),
     ('AUDITOR', 'contract:read'),      ('AUDITOR', 'contract:read_all'),
-    ('AUDITOR', 'billing:read'),
+    ('AUDITOR', 'billing:read'),       ('AUDITOR', 'billing:read_all'),
     ('AUDITOR', 'notification:read'),
     ('AUDITOR', 'dashboard:read'),     ('AUDITOR', 'dashboard:read_all'),
     ('AUDITOR', 'audit:read'),

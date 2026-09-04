@@ -1,8 +1,8 @@
 package com.caiocodes.crbap.contract.web.dto;
 
 import com.caiocodes.crbap.contract.application.ContractCommands;
-import com.caiocodes.crbap.contract.domain.BillingCycle;
 import com.caiocodes.crbap.contract.domain.ContractId;
+import com.caiocodes.crbap.shared.domain.BillingCycle;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;

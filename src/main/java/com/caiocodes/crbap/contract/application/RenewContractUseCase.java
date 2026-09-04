@@ -1,8 +1,9 @@
 package com.caiocodes.crbap.contract.application;
 
-import com.caiocodes.crbap.contract.application.port.ContractClientPort.ClientRef;
+import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
+import com.caiocodes.crbap.shared.application.ClientDirectory.ClientRef;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
 import com.caiocodes.crbap.shared.domain.DateRange;
 import com.caiocodes.crbap.shared.domain.Money;
@@ -46,6 +47,7 @@ public class RenewContractUseCase {
 
     private final ContractRepository contracts;
     private final ContractFinder finder;
+    private final ContractBillingPort billings;
     private final DomainEventRecorder events;
     private final Clock clock;
 
@@ -87,8 +89,15 @@ public class RenewContractUseCase {
         events.record(atual);
         events.record(salvo);
 
-        log.info("contract.renewed de={} para={} number={}",
-                atual.id(), salvo.id(), salvo.number());
+        // O sucessor nasce ACTIVE, entao as parcelas dele saem aqui — na mesma
+        // transacao, pelo mesmo motivo da ativacao (ADR-006). O contrato
+        // anterior tem as cobrancas futuras canceladas: ele acabou hoje.
+        billings.cancelFutureFor(atual.id().value(), today,
+                "Contrato renovado pelo sucessor " + salvo.number());
+        int cobrancas = billings.generateFor(ContractBillings.of(salvo));
+
+        log.info("contract.renewed de={} para={} number={} cobrancas={}",
+                atual.id(), salvo.id(), salvo.number(), cobrancas);
         return new RenewalResult(
                 ContractDetail.from(salvo, finder.clientNameOf(salvo), today), false);
     }

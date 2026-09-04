@@ -26,6 +26,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p>As tabelas de papéis e permissões <b>não</b> são limpas: vêm da migração
  * repetível {@code R__seed_rbac.sql} e são a matriz de verdade do sistema.
+ *
+ * <p><b>A limpeza é toda daqui, e a ordem importa.</b> Antes da fase 5 cada
+ * classe apagava as suas tabelas num {@code @BeforeEach} próprio — o que parou
+ * de funcionar quando cobranças passaram a referenciar contratos, clientes e
+ * usuários com {@code ON DELETE RESTRICT}: o JUnit roda o {@code @BeforeEach} da
+ * superclasse <b>antes</b> do da subclasse, então a base apagava usuários e o
+ * banco recusava. Com tudo num lugar só, a ordem é explícita e cada classe de
+ * teste começa do zero.
  */
 public abstract class AbstractIamIntegrationTest extends AbstractIntegrationTest {
 
@@ -37,7 +45,16 @@ public abstract class AbstractIamIntegrationTest extends AbstractIntegrationTest
     @Autowired protected Clock clock;
 
     @BeforeEach
-    void limparUsuarios() {
+    void limparBase() {
+        // Dos filhos para os pais: pagamento depende de cobrança, que depende de
+        // contrato e cliente, que dependem de usuário. Inverter a ordem faz o
+        // Postgres recusar o DELETE, e o erro fala de constraint, não de teste.
+        jdbc.update("DELETE FROM payments");
+        jdbc.update("DELETE FROM billings");
+        jdbc.update("DELETE FROM contracts");
+        jdbc.update("DELETE FROM client_contacts");
+        jdbc.update("DELETE FROM clients");
+        jdbc.update("DELETE FROM outbox_events");
         jdbc.update("DELETE FROM refresh_tokens");
         jdbc.update("DELETE FROM user_roles");
         jdbc.update("DELETE FROM users");

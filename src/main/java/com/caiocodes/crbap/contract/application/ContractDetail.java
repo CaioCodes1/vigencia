@@ -1,8 +1,8 @@
 package com.caiocodes.crbap.contract.application;
 
-import com.caiocodes.crbap.contract.domain.BillingCycle;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractStatus;
+import com.caiocodes.crbap.shared.domain.BillingCycle;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

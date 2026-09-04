@@ -12,7 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,14 +35,6 @@ class ContractIT extends AbstractIamIntegrationTest {
     private static final String CNPJ = "11222333000181";
 
     @Autowired private ExpireContractsUseCase expireContracts;
-
-    @BeforeEach
-    void limparContratos() {
-        jdbc.update("DELETE FROM outbox_events");
-        jdbc.update("DELETE FROM contracts");
-        jdbc.update("DELETE FROM client_contacts");
-        jdbc.update("DELETE FROM clients");
-    }
 
     // =================================================================
     // Criação e ativação

@@ -1,6 +1,5 @@
-package com.caiocodes.crbap.contract.domain;
+package com.caiocodes.crbap.shared.domain;
 
-import com.caiocodes.crbap.shared.domain.DateRange;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

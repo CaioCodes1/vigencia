@@ -3,7 +3,9 @@ package com.caiocodes.crbap.shared.domain;
 import com.caiocodes.crbap.shared.domain.exception.CurrencyMismatchException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Currency;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -63,12 +65,50 @@ public record Money(BigDecimal amount, Currency currency) implements Comparable<
         return new Money(amount.multiply(BigDecimal.valueOf(factor)), currency);
     }
 
+    /**
+     * Divide em {@code parts} parcelas cuja soma é <b>exatamente</b> este valor.
+     *
+     * <p>R.000,00 em 3 dá 333,333… Arredondar cada parcela para 333,33 faz a
+     * soma dar 999,99 — um centavo somem, e ninguém consegue explicar de onde.
+     * Aqui a divisão arredonda para baixo e a <b>sobra vai para a última
+     * parcela</b> (333,33 · 333,33 · 333,34).
+     *
+     * <p>A última, e não a primeira, porque a primeira é a que o cliente vê no
+     * ato da assinatura: um valor "quebrado" logo de cara gera ligação para o
+     * comercial.
+     */
+    public List<Money> split(int parts) {
+        if (parts < 1) {
+            throw new IllegalArgumentException("O número de parcelas deve ser pelo menos 1");
+        }
+        BigDecimal base = amount.divide(BigDecimal.valueOf(parts), SCALE, RoundingMode.DOWN);
+        Money parcela = new Money(base, currency);
+
+        List<Money> parcelas = new ArrayList<>(parts);
+        for (int i = 0; i < parts - 1; i++) {
+            parcelas.add(parcela);
+        }
+        parcelas.add(subtract(parcela.multiply(parts - 1)));
+        return List.copyOf(parcelas);
+    }
+
     public boolean isPositive() {
         return amount.signum() > 0;
     }
 
     public boolean isZero() {
         return amount.signum() == 0;
+    }
+
+    /**
+     * O valor em centavos.
+     *
+     * <p>É também quantas parcelas não-zero cabem neste valor — R$ 0,01 só cabe
+     * em uma. Serve ainda para integrar com gateway de pagamento, que quase
+     * sempre fala em unidade menor.
+     */
+    public long toMinorUnits() {
+        return amount.movePointRight(SCALE).longValueExact();
     }
 
     public boolean isNegative() {

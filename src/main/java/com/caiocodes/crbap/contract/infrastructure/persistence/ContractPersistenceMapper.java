@@ -1,6 +1,5 @@
 package com.caiocodes.crbap.contract.infrastructure.persistence;
 
-import com.caiocodes.crbap.contract.domain.BillingCycle;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractId;
 import com.caiocodes.crbap.contract.domain.ContractListItem;
@@ -8,6 +7,7 @@ import com.caiocodes.crbap.contract.domain.ContractState;
 import com.caiocodes.crbap.contract.domain.ContractStatus;
 import com.caiocodes.crbap.contract.infrastructure.persistence.ContractEntity.BillingCycleValue;
 import com.caiocodes.crbap.contract.infrastructure.persistence.ContractEntity.ContractStatusValue;
+import com.caiocodes.crbap.shared.domain.BillingCycle;
 import com.caiocodes.crbap.shared.domain.DateRange;
 import com.caiocodes.crbap.shared.domain.Money;
 import java.util.Currency;

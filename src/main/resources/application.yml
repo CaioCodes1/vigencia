@@ -124,6 +124,10 @@ crbap:
     enabled: ${JOBS_ENABLED:true}
     outbox-relay-delay: 5000
     expiry-cron: "0 0 2 * * *"
+    # Meia hora depois da varredura de contratos, de proposito: um contrato que
+    # expira hoje tem cobrancas que vencem hoje, e marcar a cobranca antes de o
+    # contrato expirar deixa as duas telas discordando durante meia manha.
+    overdue-cron: "0 30 2 * * *"
 
 logging:
   level:

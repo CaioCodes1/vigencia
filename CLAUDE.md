@@ -7,8 +7,8 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1 a 4 de 8 concluídas (01–03/09/2026).** 217 testes verdes
-> (145 unitários + 72 de integração), 0 violações de Checkstyle.
+> **Estado: fases 1 a 5 de 8 concluídas (01–04/09/2026).** 279 testes verdes
+> (188 unitários + 91 de integração), 0 violações de Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
@@ -22,9 +22,13 @@ código nas fases 2 e 6.
 >   de estados, renovação encadeada com `Idempotency-Key` e lock pessimista,
 >   `/expiring` com faixas, `/chain` por CTE recursiva, varredura diária de
 >   vencimentos e **outbox** (tabela, gravação transacional e relay).
+> - **Fase 5** — cobranças: ativar contrato gera as parcelas na mesma transação
+>   (ADR-006), pagamento parcial com `Idempotency-Key` e lock, estorno que marca
+>   em vez de apagar, varredura diária de inadimplência e o cálculo de parcelas
+>   com a sobra de centavos na última.
 >
-> **Próxima: fase 5 (cobranças e pagamentos).** Cobrança, notificação e
-> dashboard ainda não existem.
+> **Próxima: fase 6 (scheduler e notificações).** Notificação e dashboard ainda
+> não existem, e o relay da outbox ainda publica no log em vez do RabbitMQ.
 
 ## Rodar
 
@@ -179,6 +183,55 @@ Fase 4 (contratos):
   testes de integração quebra, porque o `@BeforeEach` da superclasse roda antes
   do da subclasse.
 
+Fase 5 (cobranças):
+
+- **`BillingCycle` mora em `shared/domain`, não em `contract/domain`.** Dois
+  módulos precisam dela: contrato para saber sua periodicidade, cobrança para
+  calcular parcelas. Foi **movida na fase 5** — não devolver.
+- **`ClientDirectory` (em `shared/application`) substituiu o `ContractClientPort`.**
+  Contratos e cobranças precisam exatamente dos mesmos quatro campos do cliente;
+  duas portas idênticas seriam duas implementações para manter em sincronia.
+  Quem implementa é `client/infrastructure/ClientDirectoryAdapter`.
+- **Ativar contrato gera as cobranças na MESMA transação** (ADR-006). É a
+  exceção documentada à regra de um agregado por transação: contrato ativo sem
+  cobrança é a empresa parar de faturar sem ninguém perceber. O
+  `GenerateContractBillingsUseCase` usa `Propagation.MANDATORY` para que isso
+  não possa ser afrouxado por acidente.
+- **O saldo da cobrança nunca é coluna.** É sempre `valor − soma dos pagamentos
+  não estornados`, e o `status` é recalculado por uma função só
+  (`recalculateStatus`), chamada por registrar, estornar e cancelar. Guardar o
+  saldo criaria duas fontes de verdade, e o primeiro estorno que esquecesse de
+  atualizar faria a empresa cobrar quem já pagou.
+- **Estorno marca, não apaga.** `refunded = true` e o valor sai do saldo; a
+  linha continua. Apagar significaria dinheiro que entrou e sumiu do histórico.
+- **`Money.split(n)` joga a sobra de centavos na ÚLTIMA parcela**, e há um teste
+  parametrizado conferindo que a soma bate para vários valores. A última, e não
+  a primeira, porque a primeira é a que o cliente vê ao assinar.
+- **O calculador limita as parcelas ao valor em centavos.** R$ 0,01 em 12
+  parcelas daria onze de R$ 0,00, e cobrança de valor zero é recusada pelo
+  agregado — o cálculo não pode produzi-la para o `INSERT` estourar depois.
+- **`Idempotency-Key` é obrigatória no pagamento** (na renovação é opcional).
+  Gateway reenvia webhook, e o mesmo PIX contado duas vezes é dinheiro que a
+  empresa acha que recebeu. O índice `uk_payments_idem` **não** é parcial.
+- **Cobrança com pagamento não é cancelável** — o caminho é o estorno. Cancelar
+  por cima esconderia um pagamento recebido.
+- **Cancelar contrato cancela só as cobranças futuras.** As vencidas continuam
+  de pé: cancelar contrato não perdoa dívida.
+- **`findByIdForUpdate` não usa `EntityGraph`.** O Hibernate transforma o grafo
+  num `LEFT JOIN` e o Postgres recusa `FOR UPDATE` sobre o lado nulável de um
+  outer join. Trava-se a cobrança e os pagamentos vêm na leitura seguinte,
+  dentro da mesma transação.
+- **`markOverdue` devolve `false` em vez de lançar** quando não se aplica: é
+  chamado em lote sobre milhares de cobranças, e "essa aqui não" é o caso
+  normal. `registerPayment` lança, porque ali existe um humano esperando.
+- **A limpeza dos testes de integração é toda do `AbstractIamIntegrationTest`**,
+  na ordem filhos → pais. Cada classe ter o seu `@BeforeEach` parou de funcionar
+  quando cobranças passaram a referenciar contratos e clientes com
+  `ON DELETE RESTRICT` — o JUnit roda o da superclasse primeiro.
+- **`SALES` ganhou `billing:read` (sem `billing:read_all`).** Sem isso nenhum
+  papel exercitava o escopo de carteira em cobranças, e a regra existia sem
+  ninguém poder alcançá-la.
+
 ## Convenções
 
 Seguem as da raiz (`E:\projetos\CLAUDE.md`): documentação, comentários e
@@ -202,14 +255,20 @@ Específicas deste projeto:
 - **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
   commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
-- Fase 5 (cobranças e pagamentos) é a próxima. O evento
-  `contract.activated` já é gravado na outbox esperando quem gere as parcelas;
-  `BillingCycle.occurrencesIn` e `nextDueDate` já existem e estão testados.
+- Fase 6 (scheduler e notificações) é a próxima. Falta a régua D-30/15/7/1, o
+  RabbitMQ e o ShedLock — hoje os dois jobs rodam em toda instância, e a
+  proteção é o agregado recusar a transição repetida.
+- **`LoggingDomainEventPublisher` é provisório.** Na fase 6 é apagado e o
+  publicador do RabbitMQ assume; não há `@ConditionalOnMissingBean` de
+  propósito, para não existirem dois publicadores vivos sem ninguém decidir.
 - **`contract_items` não foi criada.** O DDL da nota 07 a prevê, mas o agregado
   não tem itens e tabela sem código é peso morto. Entra quando houver caso de uso.
 - **`GET /clients/{id}/contracts` não existe** — use `GET /contracts?clientId=`.
-- A listagem de contratos não traz o nome do cliente (só o `clientId`), embora o
-  join com `clients` já esteja na consulta por causa do escopo.
+- As listagens de contrato e de cobrança não trazem o nome do cliente (só o
+  `clientId`), embora o join com `clients` já esteja na consulta por causa do
+  escopo.
+- **Juros e multa por atraso não existem.** `daysLate` é calculado, mas nada é
+  acrescido ao valor — a régua de encargos não foi especificada.
 - **Ambiente (02/09, parcialmente resolvido):** o Maven morria com
   `insufficient memory` e o Docker caía junto porque o limite de commit do
   Windows era ~17 GB (pagefile de 800 MB). Hoje a garantia é o **pagefile fixo

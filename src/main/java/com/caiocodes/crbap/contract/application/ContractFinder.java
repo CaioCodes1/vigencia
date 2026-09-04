@@ -1,9 +1,10 @@
 package com.caiocodes.crbap.contract.application;
 
-import com.caiocodes.crbap.contract.application.port.ContractClientPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractId;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
+import com.caiocodes.crbap.shared.application.ClientDirectory;
+import com.caiocodes.crbap.shared.application.ClientDirectory.ClientRef;
 import com.caiocodes.crbap.shared.application.CurrentUser;
 import com.caiocodes.crbap.shared.domain.exception.NotFoundException;
 import java.util.UUID;
@@ -27,7 +28,7 @@ public class ContractFinder {
     static final String READ_ALL = "contract:read_all";
 
     private final ContractRepository contracts;
-    private final ContractClientPort clients;
+    private final ClientDirectory clients;
     private final CurrentUser currentUser;
 
     /** Leitura. */
@@ -55,12 +56,12 @@ public class ContractFinder {
 
     public String clientNameOf(Contract contract) {
         return clients.findRef(contract.clientId())
-                .map(ContractClientPort.ClientRef::legalName)
+                .map(ClientRef::legalName)
                 .orElse(null);
     }
 
     /** {@code null} quando o cliente sumiu — o chamador decide o que fazer. */
-    public ContractClientPort.ClientRef clientRefOf(Contract contract) {
+    public ClientRef clientRefOf(Contract contract) {
         return clients.findRef(contract.clientId()).orElse(null);
     }
 
@@ -70,7 +71,7 @@ public class ContractFinder {
 
     private UUID accountManagerOf(Contract contract) {
         return clients.findRef(contract.clientId())
-                .map(ContractClientPort.ClientRef::accountManagerId)
+                .map(ClientRef::accountManagerId)
                 .orElse(null);
     }
 }

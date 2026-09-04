@@ -1,11 +1,11 @@
 package com.caiocodes.crbap.contract.application;
 
-import com.caiocodes.crbap.contract.application.port.ContractClientPort;
-import com.caiocodes.crbap.contract.application.port.ContractClientPort.ClientRef;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractNumberGenerator;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
 import com.caiocodes.crbap.contract.domain.NewContract;
+import com.caiocodes.crbap.shared.application.ClientDirectory;
+import com.caiocodes.crbap.shared.application.ClientDirectory.ClientRef;
 import com.caiocodes.crbap.shared.application.CurrentUser;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
 import com.caiocodes.crbap.shared.domain.DateRange;
@@ -32,7 +32,7 @@ public class CreateContractUseCase {
     private static final String DEFAULT_CURRENCY = "BRL";
 
     private final ContractRepository contracts;
-    private final ContractClientPort clients;
+    private final ClientDirectory clients;
     private final ContractNumberGenerator numbers;
     private final CurrentUser currentUser;
     private final DomainEventRecorder events;

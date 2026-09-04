@@ -8,6 +8,7 @@ import com.caiocodes.crbap.contract.domain.ContractEvents.ContractRenewed;
 import com.caiocodes.crbap.contract.domain.ContractEvents.ContractResumed;
 import com.caiocodes.crbap.contract.domain.ContractEvents.ContractSuspended;
 import com.caiocodes.crbap.shared.domain.AggregateRoot;
+import com.caiocodes.crbap.shared.domain.BillingCycle;
 import com.caiocodes.crbap.shared.domain.DateRange;
 import com.caiocodes.crbap.shared.domain.Money;
 import com.caiocodes.crbap.shared.domain.exception.BusinessRuleException;

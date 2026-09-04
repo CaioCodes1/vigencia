@@ -4,7 +4,6 @@ import com.caiocodes.crbap.support.AbstractIamIntegrationTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -23,12 +22,6 @@ class ClientIT extends AbstractIamIntegrationTest {
 
     private static final String SENHA = "senha-bem-comprida-123";
     private static final String CNPJ = "11222333000181";
-
-    @BeforeEach
-    void limparClientes() {
-        jdbc.update("DELETE FROM client_contacts");
-        jdbc.update("DELETE FROM clients");
-    }
 
     // =================================================================
     // Cadastro

@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.domain;
 
+import com.caiocodes.crbap.shared.domain.BillingCycle;
 import com.caiocodes.crbap.shared.domain.DateRange;
 import com.caiocodes.crbap.shared.domain.Money;
 import com.caiocodes.crbap.shared.domain.exception.BusinessRuleException;

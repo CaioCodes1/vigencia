@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractId;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
@@ -12,13 +13,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * DRAFT → ACTIVE (RF-09).
+ * DRAFT → ACTIVE (RF-09), gerando as cobranças do ciclo.
  *
- * <p>É o evento {@code contract.activated} gravado aqui que a fase 5 vai
- * consumir para gerar as cobranças do ciclo. Esta transação não gera cobrança
- * nenhuma de propósito: ativar contrato e faturar são responsabilidades de
- * módulos diferentes, e amarrar as duas no mesmo commit faria uma falha no
- * faturamento impedir a ativação.
+ * <p>As cobranças nascem <b>na mesma transação</b> (ADR-006). É a exceção
+ * consciente à regra de um agregado por transação: um contrato ativo sem
+ * cobrança é uma empresa que parou de faturar sem ninguém perceber, e nenhuma
+ * janela de inconsistência é aceitável aí. Um commit ou nenhum.
+ *
+ * <p>O e-mail de boas-vindas continua assíncrono, pela outbox — esse sim
+ * tolera atraso.
  */
 @Slf4j
 @Service
@@ -27,6 +30,7 @@ public class ActivateContractUseCase {
 
     private final ContractRepository contracts;
     private final ContractFinder finder;
+    private final ContractBillingPort billings;
     private final DomainEventRecorder events;
     private final Clock clock;
 
@@ -37,7 +41,10 @@ public class ActivateContractUseCase {
 
         Contract saved = contracts.save(contract);
         events.record(saved);
-        log.info("contract.activated contractId={} number={}", saved.id(), saved.number());
+
+        int cobrancas = billings.generateFor(ContractBillings.of(saved));
+        log.info("contract.activated contractId={} number={} cobrancas={}",
+                saved.id(), saved.number(), cobrancas);
         return ContractDetail.from(saved, finder.clientNameOf(saved), LocalDate.now(clock));
     }
 }

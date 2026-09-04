@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
@@ -28,6 +29,7 @@ public class CancelContractUseCase {
 
     private final ContractRepository contracts;
     private final ContractFinder finder;
+    private final ContractBillingPort billings;
     private final DomainEventRecorder events;
     private final Clock clock;
 
@@ -40,7 +42,11 @@ public class CancelContractUseCase {
 
         Contract saved = contracts.save(contract);
         events.record(saved);
-        log.info("contract.cancelled contractId={} number={}", saved.id(), saved.number());
+        int canceladas = billings.cancelFutureFor(saved.id().value(), today,
+                "Contrato cancelado: " + saved.cancellationReason());
+
+        log.info("contract.cancelled contractId={} number={} cobrancasCanceladas={}",
+                saved.id(), saved.number(), canceladas);
         return ContractDetail.from(saved, finder.clientNameOf(saved), today);
     }
 }

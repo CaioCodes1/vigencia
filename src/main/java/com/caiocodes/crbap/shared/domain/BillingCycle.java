@@ -1,12 +1,17 @@
-package com.caiocodes.crbap.contract.domain;
+package com.caiocodes.crbap.shared.domain;
 
-import com.caiocodes.crbap.shared.domain.DateRange;
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
 
 /**
  * Periodicidade da cobrança de um contrato.
+ *
+ * <p>Mora no kernel compartilhado, e não em {@code contract.domain}, porque
+ * <b>dois</b> módulos precisam dela: o contrato para saber sua periodicidade, e
+ * o de cobranças para calcular quantas parcelas gerar e quando cada uma vence.
+ * Deixá-la em um deles obrigaria o outro a importar o domínio alheio — que é
+ * exatamente o acoplamento que a arquitetura existe para evitar.
  *
  * <p>O {@link Period} embutido é o que permite calcular "quantas parcelas cabem
  * neste período" e "quando cai a parcela nº 3" sem um {@code switch} espalhado

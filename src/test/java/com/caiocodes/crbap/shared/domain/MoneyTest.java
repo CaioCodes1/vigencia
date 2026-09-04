@@ -101,6 +101,57 @@ class MoneyTest {
         }
     }
 
+    @Nested
+    @DisplayName("divisão em parcelas")
+    class Divisao {
+
+        @ParameterizedTest
+        @CsvSource({
+            "1000.00, 3", "1000.00, 7", "0.03, 2", "999.99, 12", "24000.00, 12",
+            "100.00, 3", "0.01, 1", "12345.67, 11"
+        })
+        @DisplayName("a soma das parcelas é sempre EXATAMENTE o valor original")
+        void a_soma_deve_bater(String valor, int partes) {
+            Money total = Money.of(valor, "BRL");
+
+            Money somado = total.split(partes).stream()
+                    .reduce(Money.zero(total.currency()), Money::add);
+
+            assertThat(somado).isEqualTo(total);
+        }
+
+        @Test
+        @DisplayName("a sobra de centavos vai para a última parcela")
+        void a_sobra_deve_ir_para_a_ultima() {
+            // 1000,00 / 3 = 333,333… Arredondar tudo para 333,33 daria 999,99, e
+            // o centavo que falta ninguém consegue explicar seis meses depois.
+            assertThat(Money.of("1000.00", "BRL").split(3))
+                    .containsExactly(Money.of("333.33", "BRL"), Money.of("333.33", "BRL"),
+                            Money.of("333.34", "BRL"));
+        }
+
+        @Test
+        @DisplayName("dividir em uma parcela devolve o próprio valor")
+        void uma_parcela_deve_devolver_o_total() {
+            assertThat(Money.of("1000.00", "BRL").split(1))
+                    .containsExactly(Money.of("1000.00", "BRL"));
+        }
+
+        @Test
+        @DisplayName("zero ou menos parcelas é erro de programação, não regra de negócio")
+        void nao_deve_dividir_em_zero_partes() {
+            assertThatThrownBy(() -> Money.of("100.00", "BRL").split(0))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("o valor em centavos diz quantas parcelas não-zero cabem")
+        void deve_converter_para_centavos() {
+            assertThat(Money.of("1234.56", "BRL").toMinorUnits()).isEqualTo(123456L);
+            assertThat(Money.of("0.01", "BRL").toMinorUnits()).isEqualTo(1L);
+        }
+    }
+
     @Test
     @DisplayName("toString inclui a moeda — número solto não é dinheiro")
     void to_string_deve_incluir_a_moeda() {
