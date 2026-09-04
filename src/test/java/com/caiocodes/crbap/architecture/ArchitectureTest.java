@@ -32,10 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * não roda é pior que regra nenhuma, porque parece que existe proteção.
  * Como @Test comum, o Jupiter executa e uma violação reprova o build.
  *
- * <p>O {@code allowEmptyShould(true)} aparece nas regras cujo alvo ainda não
- * existe (não há {@code @Entity} nem controller na fase 1). <b>Remover
- * conforme cada fase preencher o pacote</b> — deixar para sempre esconde regra
- * que parou de valer.
+ * <p>O {@code allowEmptyShould(true)} que existia nas regras da fase 1 foi
+ * <b>removido na fase 4</b>: todo alvo ({@code @Entity}, controller,
+ * {@code *UseCase}) já existe. Se uma regra voltar a ficar sem alvo, o build
+ * quebra — e é isso que se quer, porque regra vazia é regra que parou de valer
+ * sem ninguém perceber.
  */
 class ArchitectureTest {
 
@@ -65,8 +66,7 @@ class ArchitectureTest {
                         "org.springframework..",
                         "jakarta.persistence..",
                         "com.fasterxml.jackson..")
-                .because("o domínio precisa ser testável sem subir contexto nenhum")
-                .allowEmptyShould(true);
+                .because("o domínio precisa ser testável sem subir contexto nenhum");
 
         regra.check(classesDoProjeto);
     }
@@ -78,7 +78,6 @@ class ArchitectureTest {
                 .that().resideInAPackage("..domain..")
                 .should().dependOnClassesThat().resideInAnyPackage("..infrastructure..", "..web..")
                 .because("a dependência aponta para dentro, nunca para fora")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 
@@ -88,7 +87,6 @@ class ArchitectureTest {
         noClasses()
                 .that().resideInAPackage("..application..")
                 .should().dependOnClassesThat().resideInAnyPackage("..infrastructure..", "..web..")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 
@@ -98,7 +96,6 @@ class ArchitectureTest {
         noClasses()
                 .that().resideInAPackage("..crbap.*.web..")
                 .should().dependOnClassesThat().resideInAPackage("..persistence..")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 
@@ -109,7 +106,6 @@ class ArchitectureTest {
                 .that().areAnnotatedWith(Entity.class)
                 .should().resideInAPackage("..infrastructure.persistence..")
                 .because("@Entity é detalhe de banco, não modelo de negócio")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 
@@ -120,7 +116,6 @@ class ArchitectureTest {
                 .that().areAnnotatedWith(RestController.class)
                 .should().haveSimpleNameEndingWith("Controller")
                 .andShould().resideInAPackage("..web..")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 
@@ -132,7 +127,6 @@ class ArchitectureTest {
                 .and().areNotInterfaces()
                 .should().beAnnotatedWith(Service.class)
                 .andShould().resideInAPackage("..application..")
-                .allowEmptyShould(true)
                 .check(classesDoProjeto);
     }
 

@@ -31,6 +31,11 @@ crbap:
     data-key: "Y3JiYXAtY2hhdmUtZGUtdGVzdGUtZGFkb3MtLTMyYnk="
     index-key: "Y3JiYXAtY2hhdmUtZGUtdGVzdGUtaW5kaWNlLTMyYnk="
 
+  jobs:
+    # O agendador fica desligado: os testes chamam o caso de uso direto, com a
+    # data controlada pelo Clock, em vez de esperar o cron.
+    enabled: false
+
 logging:
   level:
     com.caiocodes.crbap: DEBUG

@@ -118,6 +118,13 @@ crbap:
     data-key: ${DATA_ENCRYPTION_KEY:}
     index-key: ${BLIND_INDEX_KEY:}
 
+  jobs:
+    # Desligado nos testes de integração: um job disparando no meio de um teste
+    # muda o dado que o teste está conferindo. Ver SchedulingConfig.
+    enabled: ${JOBS_ENABLED:true}
+    outbox-relay-delay: 5000
+    expiry-cron: "0 0 2 * * *"
+
 logging:
   level:
     root: INFO

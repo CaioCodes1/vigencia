@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -81,6 +82,21 @@ public class GlobalExceptionHandler {
         log.debug("Parâmetro inválido em {}: {}", req.getRequestURI(), e.getMessage());
         return build(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER",
                 "Parâmetro ausente ou com tipo inválido", req);
+    }
+
+    /**
+     * Cabeçalho obrigatório ausente — hoje só o {@code Idempotency-Key} da
+     * renovação.
+     *
+     * <p>Sem este handler a exceção cairia na rede de segurança lá embaixo e
+     * viraria <b>500</b>: quem esqueceu um cabeçalho receberia "erro interno" e
+     * abriria chamado, quando o problema é dele e o 400 já diz qual.
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiError> onMissingHeader(MissingRequestHeaderException e,
+                                                    HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "MISSING_HEADER",
+                "Cabeçalho obrigatório ausente: " + e.getHeaderName(), req);
     }
 
     /**

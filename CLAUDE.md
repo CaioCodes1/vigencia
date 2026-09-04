@@ -7,20 +7,24 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1, 2 e 3 de 8 concluídas (01–02/09/2026).** 156 testes verdes
-> (103 unitários + 53 de integração), 0 violações de Checkstyle.
+> **Estado: fases 1 a 4 de 8 concluídas (01–03/09/2026).** 217 testes verdes
+> (145 unitários + 72 de integração), 0 violações de Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
 > - **Fase 2** — IAM completo: Argon2id, JWT RS256, refresh com rotação e
 >   detecção de reuso, logout com denylist no Redis, bloqueio de conta, rate
->   limit, RBAC (31 permissões, 6 papéis), `deny by default`.
+>   limit, RBAC (32 permissões, 6 papéis), `deny by default`.
 > - **Fase 3** — clientes: agregado `Client` com contatos, documento cifrado em
 >   repouso (AES-256-GCM) + índice cego HMAC para busca e unicidade, escopo por
 >   carteira, busca sem acento e desativação lógica com recadastro.
+> - **Fase 4** — contratos: agregado `Contract` com as 9 transições da máquina
+>   de estados, renovação encadeada com `Idempotency-Key` e lock pessimista,
+>   `/expiring` com faixas, `/chain` por CTE recursiva, varredura diária de
+>   vencimentos e **outbox** (tabela, gravação transacional e relay).
 >
-> **Próxima: fase 4 (contratos).** Contrato, cobrança, notificação e dashboard
-> ainda não existem.
+> **Próxima: fase 5 (cobranças e pagamentos).** Cobrança, notificação e
+> dashboard ainda não existem.
 
 ## Rodar
 
@@ -70,9 +74,10 @@ geram "conserto" indevido:
 - **O domínio não importa Spring nem JPA.** Não é preciosismo: é o que faz
   `mvn test` rodar em segundos. Quem garante é o `ArchitectureTest` — se ele
   acusar violação, o certo é mover a classe, não afrouxar a regra.
-- **`allowEmptyShould(true)` no `ArchitectureTest`** existe porque várias regras
-  ainda não têm alvo (não há `@Entity` nem controller). **Remover conforme cada
-  fase preencher o pacote** — deixar para sempre esconde regra que parou de valer.
+- **`allowEmptyShould(true)` foi removido do `ArchitectureTest` na fase 4.**
+  Todo alvo já existe; se uma regra voltar a ficar vazia, o build quebra — que
+  é o comportamento desejado, porque regra vazia é regra que parou de valer sem
+  ninguém perceber. **Não reintroduzir para "consertar" um teste vermelho.**
 - **`f_unaccent` na V1.** O `unaccent()` nativo é `STABLE`, e índice exige
   `IMMUTABLE`. Sem esse wrapper, o `CREATE INDEX` de V2 falha. Não é
   duplicação inútil.
@@ -124,11 +129,55 @@ geram "conserto" indevido:
   no corpo é ignorado para quem não tem `client:read_all`.
 - **A listagem devolve `ClientListItem`, não o agregado.** Carregar `Client`
   inteiro numa página de 20 traria 20 listas de contatos que a tela não mostra.
-- **`NoContractsYetAdapter` é temporário.** Implementa `ClientContractsPort`
-  respondendo sempre "não há contratos" para a regra RF-03 já existir e ser
-  testável. **Na fase 4 esta classe é apagada** e o módulo `contract` assume.
-- **JaCoCo com `jacoco.check.skip=true`.** A meta de 80% liga na fase 4, quando
+- **`NoContractsYetAdapter` foi apagado na fase 4.** Quem implementa
+  `ClientContractsPort` agora é `contract/infrastructure/ClientContractsAdapter`.
+- **JaCoCo com `jacoco.check.skip=true`.** A meta de 80% liga na fase 5, quando
   existir lógica suficiente para ela significar alguma coisa.
+
+Fase 4 (contratos):
+
+- **`Contract.renew()` devolve um agregado novo e não altera as datas do atual.**
+  O contrato anterior tem que continuar existindo com o valor e o período que
+  teve — é exigência fiscal, não preferência de modelagem. Quem grava os dois é
+  o caso de uso, na mesma transação.
+- **Três defesas diferentes contra renovação duplicada, e cada uma pega um caso
+  distinto.** `Idempotency-Key` gravada no sucessor resolve o clique duplo com
+  a primeira já commitada; `findByIdForUpdate` (`SELECT ... FOR UPDATE`) resolve
+  as duas simultâneas, quando a chave ainda não existe para ser encontrada; o
+  índice `uk_contracts_one_successor` é a rede final no banco. Remover qualquer
+  uma delas parece funcionar em teste manual.
+- **Renovar responde 201 na primeira chamada e 200 na repetida.** Não é
+  detalhe: é como o cliente HTTP sabe se aquele contrato nasceu nesta chamada.
+- **`ContractExpirer` é uma classe separada do `ExpireContractsUseCase` por
+  causa do proxy do Spring.** `@Transactional(REQUIRES_NEW)` num método chamado
+  de outro método da mesma classe é **silenciosamente ignorado** — o lote
+  inteiro voltaria a compartilhar uma transação. Não juntar as duas.
+- **`ExpireContractsUseCase.execute()` não tem `@Transactional`**, de propósito:
+  ele só percorre o lote. Anotá-lo cria a transação longa que o desenho evita.
+- **`DomainEventRecorder` usa `Propagation.MANDATORY`.** Falha se for chamado
+  fora de transação — é o que garante, em execução, que o evento e a mudança do
+  agregado caiam no mesmo commit. Sem isso a outbox não resolve nada.
+- **O relay usa `FOR UPDATE SKIP LOCKED`.** Com duas instâncias no ar, sem o
+  `SKIP LOCKED` a segunda travaria esperando a primeira ou publicaria o mesmo
+  evento duas vezes. A entrega é **ao menos uma vez** — todo consumidor da fase
+  6 tem de ser idempotente.
+- **Os eventos carregam só tipos primitivos** (`BigDecimal`, `String`,
+  `LocalDate`), nunca `Money` ou `DateRange`. O evento é a fronteira com quem
+  consome; carregar value object do domínio faria refatoração interna quebrar
+  consumidor externo.
+- **O escopo de carteira do contrato sai de um join com `clients`**, porque
+  quem tem gestor é o cliente. Por isso a busca é nativa: filtrar em memória
+  depois traria página incompleta e contagem total errada.
+- **`ContractFinder` centraliza "fora do escopo responde 404, nunca 403".**
+  Repetido em cada caso de uso, bastaria um esquecimento num endpoint novo para
+  abrir o IDOR que os outros seis fecham.
+- **`crbap.jobs.enabled=false` no perfil de teste.** Com o agendador ligado, um
+  job dispara no meio de um teste e muda o dado que ele está conferindo. Os
+  testes chamam o caso de uso direto, com o `Clock` controlado.
+- **`created_by` é `ON DELETE SET NULL`.** Sem isso, apagar um usuário é
+  bloqueado por um contrato de dois anos atrás — e a limpeza de usuários dos
+  testes de integração quebra, porque o `@BeforeEach` da superclasse roda antes
+  do da subclasse.
 
 ## Convenções
 
@@ -153,14 +202,27 @@ Específicas deste projeto:
 - **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
   commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
-- Fase 4 (contratos) é a próxima: agregado `Contract` com máquina de estados,
-  renovação encadeada e a varredura diária de vencimentos. Apagar o
-  `NoContractsYetAdapter` junto.
-- **Ambiente (resolvido em 02/09):** o Maven morria com `insufficient memory` e
-  o Docker caía junto porque o limite de commit do Windows era ~17 GB (pagefile
-  de 800 MB). Com o `D:` em **tamanho fixo de 16 GB**, o limite foi para 36 GB.
-  Se voltar a acontecer, **medir o commit antes de culpar o Docker** — ver a
-  seção Discos do `E:\projetos\CLAUDE.md`.
+- Fase 5 (cobranças e pagamentos) é a próxima. O evento
+  `contract.activated` já é gravado na outbox esperando quem gere as parcelas;
+  `BillingCycle.occurrencesIn` e `nextDueDate` já existem e estão testados.
+- **`contract_items` não foi criada.** O DDL da nota 07 a prevê, mas o agregado
+  não tem itens e tabela sem código é peso morto. Entra quando houver caso de uso.
+- **`GET /clients/{id}/contracts` não existe** — use `GET /contracts?clientId=`.
+- A listagem de contratos não traz o nome do cliente (só o `clientId`), embora o
+  join com `clients` já esteja na consulta por causa do escopo.
+- **Ambiente (02/09, parcialmente resolvido):** o Maven morria com
+  `insufficient memory` e o Docker caía junto porque o limite de commit do
+  Windows era ~17 GB (pagefile de 800 MB). Hoje a garantia é o **pagefile fixo
+  de 4 GB no `C:`** (limite de 20.389 MB) — o do `D:`, apesar de configurado,
+  **não é criado no boot**. Se voltar a acontecer, **medir o commit antes de
+  culpar o Docker** — ver a seção Discos do `E:\projetos\CLAUDE.md`.
+- **Docker Desktop 4.87 deixa socket órfão e não sobe (recorrente).** O backend
+  morre com `remove ...sock: The file cannot be accessed by the system` em
+  `%LOCALAPPDATA%\Docker\run` e `%LOCALAPPDATA%\docker-secrets-engine`. Os
+  arquivos **não podem ser apagados** (`del` falha); o que funciona é
+  **renomear o diretório inteiro** e recriá-lo vazio. Aconteceu 18 vezes entre
+  23/08 e 03/09 — os diretórios renomeados estão acumulados no `AppData` e
+  podem ser apagados.
 - Falta gestão de usuários pela API (`POST /users`, conceder/revogar papéis).
   Hoje só existe leitura; usuário novo depende do `AdminBootstrap`.
 - O limite de rate limit **por e-mail** (além do por IP) ainda não existe.
