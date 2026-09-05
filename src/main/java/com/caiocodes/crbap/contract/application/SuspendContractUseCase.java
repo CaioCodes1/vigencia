@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractId;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
@@ -33,6 +34,7 @@ public class SuspendContractUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Contract", action = "SUSPEND")
     public ContractDetail suspend(ContractCommands.SuspendContract command) {
         Contract contract = finder.requireForUpdate(command.contractId());
         contract.suspend(command.reason());
@@ -44,6 +46,7 @@ public class SuspendContractUseCase {
     }
 
     @Transactional
+    @Auditable(entity = "Contract", action = "RESUME")
     public ContractDetail resume(ContractId id) {
         Contract contract = finder.requireForUpdate(id);
         contract.resume();

@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.iam.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.iam.application.port.PasswordHasher;
 import com.caiocodes.crbap.iam.domain.RefreshTokenRepository;
 import com.caiocodes.crbap.iam.domain.User;
@@ -29,6 +30,7 @@ public class ChangePasswordUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "User", action = "CHANGE_PASSWORD", id = "#command.userId().value()")
     public void execute(ChangePasswordCommand command) {
         Instant now = clock.instant();
         User user = users.findById(command.userId())

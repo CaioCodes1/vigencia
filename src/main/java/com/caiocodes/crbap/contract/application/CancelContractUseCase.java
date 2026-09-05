@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
@@ -34,6 +35,7 @@ public class CancelContractUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Contract", action = "CANCEL")
     public ContractDetail execute(ContractCommands.CancelContract command) {
         LocalDate today = LocalDate.now(clock);
         Contract contract = finder.requireForUpdate(command.contractId());

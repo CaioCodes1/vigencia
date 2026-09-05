@@ -11,6 +11,7 @@ import java.time.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -43,9 +44,26 @@ public abstract class AbstractIamIntegrationTest extends AbstractIntegrationTest
     @Autowired protected ObjectMapper objectMapper;
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected Clock clock;
+    @Autowired protected CacheManager cacheManager;
 
     @BeforeEach
     void limparBase() {
+        // O Redis nao e limpo pelo DELETE das tabelas. Sem isto, o painel
+        // calculado por um teste seria servido do cache para o proximo, que
+        // acabou de zerar a base — e a falha apareceria em um teste que nao
+        // tem nada a ver com cache. Aconteceu nesta fase.
+        cacheManager.getCacheNames().forEach(nome -> {
+            var cache = cacheManager.getCache(nome);
+            if (cache != null) {
+                cache.clear();
+            }
+        });
+        // TRUNCATE, e não DELETE: o gatilho da V6 recusa DELETE em audit_logs,
+        // e é para isso que ele existe. TRUNCATE não dispara gatilho de linha —
+        // é a porta deixada aberta de propósito, para expurgo por retenção e
+        // para a limpeza entre testes. Em produção quem a fecha é o REVOKE.
+        jdbc.update("TRUNCATE TABLE audit_logs");
+
         // Dos filhos para os pais: pagamento depende de cobrança, que depende de
         // contrato e cliente, que dependem de usuário. Inverter a ordem faz o
         // Postgres recusar o DELETE, e o erro fala de constraint, não de teste.

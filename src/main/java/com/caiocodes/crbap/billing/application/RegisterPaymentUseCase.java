@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.billing.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.billing.domain.Billing;
 import com.caiocodes.crbap.billing.domain.BillingRepository;
 import com.caiocodes.crbap.billing.domain.Payment;
@@ -57,6 +58,7 @@ public class RegisterPaymentUseCase {
     }
 
     @Transactional
+    @Auditable(entity = "Billing", action = "PAY", id = "#result.billing().id()")
     public PaymentResult execute(BillingCommands.RegisterPayment command) {
         LocalDate today = LocalDate.now(clock);
 

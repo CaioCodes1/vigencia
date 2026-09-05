@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.client.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.client.application.port.ClientContractsPort;
 import com.caiocodes.crbap.client.domain.Client;
 import com.caiocodes.crbap.client.domain.ClientId;
@@ -30,6 +31,7 @@ public class DeactivateClientUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Client", action = "DEACTIVATE", id = "#id.value()")
     public void deactivate(ClientId id) {
         Client client = clients.findById(id)
                 .orElseThrow(() -> new NotFoundException("Cliente", id));
@@ -48,6 +50,7 @@ public class DeactivateClientUseCase {
     }
 
     @Transactional
+    @Auditable(entity = "Client", action = "REACTIVATE", id = "#id.value()")
     public void reactivate(ClientId id) {
         Client client = clients.findById(id)
                 .orElseThrow(() -> new NotFoundException("Cliente", id));

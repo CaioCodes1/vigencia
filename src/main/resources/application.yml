@@ -89,7 +89,12 @@ server:
   error:
     include-stacktrace: never
     include-message: never
-  forward-headers-strategy: framework
+  # NONE de proposito: com "framework", o Spring reescreve getRemoteAddr()
+  # a partir do X-Forwarded-For -- e um cabecalho e entrada do usuario. Sem
+  # proxy real na frente, qualquer um passa a escolher o IP que a auditoria
+  # grava. Ligar so onde existir proxy, e declarar a faixa dele em
+  # crbap.audit.trusted-proxies.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
 
 management:
   endpoints:
@@ -155,6 +160,15 @@ crbap:
     # contrato expirar deixa as duas telas discordando durante meia manhã.
     overdue-cron: "0 30 3 * * *"
     notification-dispatch-delay: 60000
+    # 4 minutos para um cache de 5: a chave global e recalculada antes de
+    # expirar, e a janela fria some. Ver DashboardWarmupJob.
+    dashboard-warmup-delay: 240000
+
+  audit:
+    # Vazio = X-Forwarded-For ignorado, e vale o IP da conexao. Preencher
+    # com a faixa CIDR do proxy/balanceador (ex.: 10.0.0.0/8) so quando
+    # existir um de verdade na frente da aplicacao.
+    trusted-proxies: ${TRUSTED_PROXIES:}
 
   notification:
     # Em dev o remetente escreve o e-mail no log. Ligar isto sem querer com um

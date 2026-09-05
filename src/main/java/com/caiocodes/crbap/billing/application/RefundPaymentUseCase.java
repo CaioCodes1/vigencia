@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.billing.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.billing.domain.Billing;
 import com.caiocodes.crbap.billing.domain.BillingId;
 import com.caiocodes.crbap.billing.domain.BillingRepository;
@@ -40,6 +41,7 @@ public class RefundPaymentUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Billing", action = "REFUND")
     public BillingDetail execute(BillingCommands.RefundPayment command) {
         LocalDate today = LocalDate.now(clock);
 

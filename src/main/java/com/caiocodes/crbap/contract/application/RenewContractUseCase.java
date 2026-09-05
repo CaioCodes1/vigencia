@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
@@ -59,6 +60,10 @@ public class RenewContractUseCase {
     }
 
     @Transactional
+    // O id auditado é o do contrato RENOVADO, não o do sucessor: a pergunta
+    // que a trilha recebe é "o que aconteceu com este contrato?". O sucessor
+    // aparece no after_data, com número e valor novos.
+    @Auditable(entity = "Contract", action = "RENEW", id = "#command.contractId().value()")
     public RenewalResult execute(ContractCommands.RenewContract command) {
         LocalDate today = LocalDate.now(clock);
 

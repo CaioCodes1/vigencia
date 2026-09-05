@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.billing.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.billing.domain.Billing;
 import com.caiocodes.crbap.billing.domain.BillingRepository;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
@@ -28,6 +29,7 @@ public class CancelBillingUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Billing", action = "CANCEL")
     public BillingDetail execute(BillingCommands.CancelBilling command) {
         Billing billing = finder.requireForUpdate(command.billingId());
         billing.cancel(command.reason());

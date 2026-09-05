@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.billing.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.billing.domain.Billing;
 import com.caiocodes.crbap.billing.domain.BillingRepository;
 import com.caiocodes.crbap.billing.domain.NewBilling;
@@ -42,6 +43,7 @@ public class CreateBillingUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Billing", action = "CREATE")
     public BillingDetail execute(BillingCommands.CreateBilling command) {
         LocalDate today = LocalDate.now(clock);
         ClientRef client = requireClientInScope(command.clientId());

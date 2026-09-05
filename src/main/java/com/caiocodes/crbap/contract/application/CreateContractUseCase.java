@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractNumberGenerator;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
@@ -39,6 +40,7 @@ public class CreateContractUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Contract", action = "CREATE")
     public ContractDetail execute(ContractCommands.CreateContract command) {
         LocalDate today = LocalDate.now(clock);
         ClientRef client = requireClientInScope(command.clientId());

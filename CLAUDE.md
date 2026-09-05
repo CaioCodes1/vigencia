@@ -7,8 +7,8 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1 a 6 de 8 concluídas (01–04/09/2026).** 310 testes verdes
-> (207 unitários + 103 de integração), 0 violações de Checkstyle.
+> **Estado: fases 1 a 7 de 8 concluídas (01–04/09/2026).** 342 testes verdes
+> (224 unitários + 118 de integração), 0 violações de Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
@@ -31,8 +31,13 @@ código nas fases 2 e 6.
 >   expiração, ShedLock nos jobs, RabbitMQ com DLQ e os consumidores de contrato
 >   e de cobrança. **É aqui que o produto passa a existir** — tudo antes disto a
 >   planilha também fazia, mal; o que ela nunca fez foi avisar sozinha.
+> - **Fase 7** — auditoria e painel: trilha append-only garantida por gatilho e
+>   por `REVOKE`, preenchida por AOP (`@Auditable`), com o "antes" entregue pelo
+>   caso de uso e `changedFields` calculado; IP confiável só atrás de proxy
+>   declarado; e o dashboard com cache no Redis **com o escopo dentro da
+>   chave** — um serializador tipado por cache, sem *default typing*.
 >
-> **Próxima: fase 7 (dashboard e auditoria).** `AuditLog` ainda não existe.
+> **Próxima: fase 8 (observabilidade e CI/CD).**
 
 ## Rodar
 
@@ -99,8 +104,6 @@ geram "conserto" indevido:
   `equals` do record mentiria.
 - **`Clock` é bean.** Nada de `LocalDate.now()` dentro do domínio: as janelas de
   aviso (D-30/15/7/1) só são testáveis com o relógio controlado.
-- **AMQP ainda não está no `pom.xml`** (fase 6). Dependência entra quando existe
-  código que a use — o starter derruba o health check enquanto o serviço não sobe.
 - **`VARCHAR(n)`, nunca `TEXT`/`citext`/`INET`.** Com `ddl-auto: validate` o
   Hibernate compara o tipo de cada coluna com o que a entidade declara e
   reprova o schema inteiro no primeiro desencontro — a aplicação **não sobe**.
@@ -279,6 +282,75 @@ Fase 6 (notificações):
 - **`findByIdForUpdate` do billing e o `EntityGraph`** continuam separados — a
   mesma armadilha da fase 5 vale para qualquer agregado com coleção.
 
+
+### Fase 7 — auditoria e dashboard
+
+- **A trilha é imutável no banco, em duas camadas.** Um gatilho
+  `BEFORE UPDATE OR DELETE` que levanta exceção (vale até para superusuário — é
+  o que os testes conseguem verificar) e um `REVOKE UPDATE, DELETE, TRUNCATE`
+  condicional para o usuário `crbap_app` (vale em produção, onde a aplicação não
+  é dona da tabela). Uma só das duas não cobre os dois ambientes.
+- **`audit_logs.actor_id` NÃO tem foreign key**, ao contrário do DDL da nota 07.
+  `ON DELETE RESTRICT` tornaria impossível excluir um usuário para sempre;
+  `ON DELETE SET NULL` executaria um `UPDATE` que o gatilho recusa — e o erro
+  falaria de auditoria no meio de um cadastro. O `actor_email` desnormalizado é
+  o que responde "quem foi" depois da exclusão.
+- **O `TRUNCATE` fica de fora do gatilho de propósito.** É a porta para expurgo
+  por retenção e para a limpeza entre testes (`AbstractIamIntegrationTest` usa
+  `TRUNCATE audit_logs`; `DELETE` ali quebra). Em produção quem fecha essa porta
+  é o `REVOKE`.
+- **O `AuditAspect` roda POR FORA da transação** (`@Order(LOWEST_PRECEDENCE - 1)`,
+  uma casa acima do interceptador transacional). `proceed()` só volta depois do
+  commit, então a trilha registra o que **aconteceu**, não o que se tentou. Por
+  dentro, uma ação que desse rollback deixaria a linha dizendo que o contrato
+  foi renovado. Há um teste para isso.
+- **Falha ao auditar não derruba a ação.** A ação já commitou; jogar exceção
+  devolveria erro por uma renovação que aconteceu, e o operador tentaria de
+  novo. Fica `log.error` — que na fase 8 vira alerta.
+- **O "antes" vem do caso de uso (`AuditContext`), não do aspecto.** Buscar o
+  estado anterior genericamente exigiria um mapeador entidade→repositório dentro
+  do aspecto. Guardar o **mesmo tipo que o método devolve** é o que faz o
+  `changedFields` comparar maçã com maçã: os dois lados passam pelo mesmo
+  `ObjectMapper`.
+- **`document`, `password` e afins são redigidos antes de gravar.** Auditoria é
+  lida por muito mais gente do que a tabela de clientes — é o caminho mais fácil
+  para vazar o que a cifra de campo da fase 3 protege.
+- **`server.forward-headers-strategy` virou `none`.** Com `framework`, o Spring
+  reescreve `getRemoteAddr()` a partir do `X-Forwarded-For`, e sem proxy real na
+  frente qualquer um escolhe o IP que a auditoria grava. O `ClientIpResolver` só
+  olha o cabeçalho quando o *peer* está em `crbap.audit.trusted-proxies`, e lê a
+  lista **da direita para a esquerda** — o começo dela é o que o cliente
+  escreveu.
+- **Toda chave de cache do painel carrega o escopo** (`DashboardScope.cacheKey()`).
+  `key = "'summary'"` faria o vendedor receber o painel do gestor — vazamento de
+  autorização que não quebra tela nenhuma. É o teste que não pode faltar, e ele
+  chama o endpoint **duas vezes** de propósito: com uma chamada só, o caminho do
+  cache nem é exercitado.
+- **`DashboardCache` é classe separada do caso de uso.** `@Cacheable` é atendido
+  pelo proxy; o caso de uso resolvendo o escopo e chamando o próprio método
+  anotado seria autoinvocação, e o cache simplesmente não existiria — sem erro
+  nenhum. Mesma armadilha do `REQUIRES_NEW` da fase 6.
+- **Um serializador tipado por cache, sem `GenericJackson2JsonRedisSerializer`.**
+  *Default typing* grava o nome da classe no JSON e o usa para instanciar na
+  leitura: quem escrever no Redis escolhe o que a aplicação instancia. De
+  quebra, evita a dor de `List.of()` voltando como `ImmutableCollections$ListN`.
+- **`CacheErrorHandler` que engole erro de leitura e gravação, mas não de
+  `evict`/`clear`.** Redis fora do ar deixa o sistema lento, não errado — mas
+  uma limpeza que falhou em silêncio serve dado velho como novo.
+- **O aquecimento usa `@CachePut`, não `@Cacheable`.** O segundo devolveria o
+  valor que ainda está lá e não recalcularia nada.
+- **`(:scope IS NULL OR ...)` é aceitável no `reporting` e não no `audit`.** No
+  painel toda consulta é agregação que varre o conjunto de qualquer forma; na
+  auditoria o filtro precisa do índice para achar poucas linhas em milhões, e
+  por isso lá o `WHERE` é montado dinamicamente.
+- **O Redis não é limpo pelo `DELETE` das tabelas.** `AbstractIamIntegrationTest`
+  limpa os caches do Spring antes de cada teste — sem isso, o painel calculado
+  por um teste é servido para o seguinte, e a falha aparece num teste que não
+  tem nada a ver com cache. Aconteceu nesta fase.
+- **MRR é aproximação assumida**: o contrato guarda o total do período, não a
+  mensalidade, então o valor é distribuído pelos dias e normalizado em 30. E os
+  totais **somam sem separar moeda** — hoje toda a base é BRL; no dia em que não
+  for, a correção é `GROUP BY currency`, não um fator de conversão.
 ## Convenções
 
 Seguem as da raiz (`E:\projetos\CLAUDE.md`): documentação, comentários e
@@ -302,8 +374,19 @@ Específicas deste projeto:
 - **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
   commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
-- Fase 7 (dashboard e auditoria) é a próxima. O `AuditLog` ainda não existe, e o
-  painel vai precisar do cache no Redis que a nota 11 descreve.
+- Fase 8 (observabilidade e CI/CD) é a próxima: Actuator + Micrometer,
+  métricas de negócio, log JSON, dashboards do Grafana, `HealthIndicator` da
+  outbox e os workflows do GitHub Actions.
+- **Retenção da auditoria não existe.** `audit_logs` só cresce. O expurgo por
+  período (ou o particionamento por mês) é trabalho de quando a tabela doer —
+  a porta está aberta, porque `TRUNCATE` e `DROP PARTITION` não passam pelo
+  gatilho.
+- **Login e logout não são auditados.** No login ainda não existe autor para o
+  aspecto resolver, e o IAM já registra tentativa falha, bloqueio e rate limit.
+  Entra junto com os eventos de segurança da fase 8.
+- **`crbap.audit.trusted-proxies` está vazio e `forward-headers-strategy` é
+  `none`.** Correto para rodar sem proxy; ao publicar atrás de um balanceador,
+  os dois precisam ser preenchidos juntos — só um deles deixa o IP errado.
 - **A suíte de integração agora sobe três containers** (Postgres, Redis,
   RabbitMQ). Antes de rodar, subir o Docker com `D:\dev-tools\subir-docker.ps1`
   e conferir a folga de commit — ver a seção Ambiente abaixo.
@@ -315,6 +398,9 @@ Específicas deste projeto:
   escopo.
 - **Juros e multa por atraso não existem.** `daysLate` é calculado, mas nada é
   acrescido ao valor — a régua de encargos não foi especificada.
+- O painel **soma sem separar moeda** e o **MRR é aproximado** (valor do período
+  distribuído por dia). Vira `GROUP BY currency` quando existir contrato fora do
+  BRL.
 - **Ambiente (02/09, parcialmente resolvido):** o Maven morria com
   `insufficient memory` e o Docker caía junto porque o limite de commit do
   Windows era ~17 GB (pagefile de 800 MB). Hoje a garantia é o **pagefile fixo
@@ -331,7 +417,5 @@ Específicas deste projeto:
 - Falta gestão de usuários pela API (`POST /users`, conceder/revogar papéis).
   Hoje só existe leitura; usuário novo depende do `AdminBootstrap`.
 - O limite de rate limit **por e-mail** (além do por IP) ainda não existe.
-- `allowEmptyShould(true)` no `ArchitectureTest`: remover das regras cujo alvo
-  já passou a existir (`@RestController` e `*UseCase` já existem desde a fase 2).
 - Decidir entre o roadmap completo (12–14 semanas) e a versão reduzida de 4
   semanas descrita no fim da nota 18.

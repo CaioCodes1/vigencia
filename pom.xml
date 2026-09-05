@@ -152,6 +152,14 @@
             <version>${shedlock.version}</version>
         </dependency>
 
+        <!-- ============ fase 7: auditoria e dashboard ============ -->
+        <!-- AOP: o @Auditable e um aspecto so, em vez de uma chamada de
+             auditoria repetida dentro de cada caso de uso que muda dado. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- ============ entra na fase 8 ============
              micrometer-registry-prometheus, logstash-logback-encoder -->
 

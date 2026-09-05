@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractId;
@@ -35,6 +36,7 @@ public class ActivateContractUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Contract", action = "ACTIVATE")
     public ContractDetail execute(ContractId id) {
         Contract contract = finder.requireForUpdate(id);
         contract.activate(clock.instant());

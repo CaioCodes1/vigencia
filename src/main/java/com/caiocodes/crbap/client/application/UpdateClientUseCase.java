@@ -1,5 +1,7 @@
 package com.caiocodes.crbap.client.application;
 
+import com.caiocodes.crbap.audit.application.AuditContext;
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.client.domain.Client;
 import com.caiocodes.crbap.client.domain.ClientId;
 import com.caiocodes.crbap.client.domain.ClientRepository;
@@ -25,8 +27,10 @@ public class UpdateClientUseCase {
     private final CurrentUser currentUser;
 
     @Transactional
+    @Auditable(entity = "Client", action = "UPDATE")
     public ClientDetail execute(ClientCommands.UpdateClient command) {
         Client client = load(command.clientId());
+        AuditContext.before(detail(client));
         client.updateProfile(command.legalName(), command.tradeName(), command.email(),
                 command.phone(), command.address(), command.notes());
         Client saved = clients.save(client);

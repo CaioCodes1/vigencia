@@ -1,5 +1,7 @@
 package com.caiocodes.crbap.contract.application;
 
+import com.caiocodes.crbap.audit.application.AuditContext;
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
 import com.caiocodes.crbap.shared.domain.DateRange;
@@ -26,8 +28,16 @@ public class UpdateContractUseCase {
     private final Clock clock;
 
     @Transactional
+    @Auditable(entity = "Contract", action = "UPDATE")
     public ContractDetail execute(ContractCommands.UpdateContract command) {
         Contract contract = finder.requireForUpdate(command.contractId());
+        LocalDate today = LocalDate.now(clock);
+        String clientName = finder.clientNameOf(contract);
+
+        // A foto do estado anterior, no mesmo formato do retorno: é o que
+        // permite ao aspecto dizer "mudou o valor e a data de fim", em vez de
+        // deixar dois JSONs para alguém comparar no olho.
+        AuditContext.before(ContractDetail.from(contract, clientName, today));
 
         contract.updateDraft(
                 command.title(),
@@ -41,6 +51,6 @@ public class UpdateContractUseCase {
 
         Contract saved = contracts.save(contract);
         log.info("contract.updated contractId={}", saved.id());
-        return ContractDetail.from(saved, finder.clientNameOf(saved), LocalDate.now(clock));
+        return ContractDetail.from(saved, clientName, today);
     }
 }

@@ -1,5 +1,6 @@
 package com.caiocodes.crbap.client.application;
 
+import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.client.domain.Client;
 import com.caiocodes.crbap.client.domain.ClientRepository;
 import com.caiocodes.crbap.shared.application.CurrentUser;
@@ -23,6 +24,7 @@ public class CreateClientUseCase {
     private final CurrentUser currentUser;
 
     @Transactional
+    @Auditable(entity = "Client", action = "CREATE")
     public ClientDetail execute(ClientCommands.CreateClient command) {
         Document document = Document.of(command.document());
 
