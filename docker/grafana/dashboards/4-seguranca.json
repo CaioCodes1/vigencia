@@ -1,0 +1,100 @@
+{
+  "uid": "crbap-seguranca",
+  "title": "CRBAP — Segurança",
+  "description": "401, 403 e 429 ao longo do tempo, e o log de autenticação. O que se procura aqui não é um pico isolado — é um padrão que se repete.",
+  "tags": ["crbap", "seguranca"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-12h", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "401 por minuto",
+      "description": "Pico sustentado é força bruta. O bloqueio de conta e o rate limit já respondem sozinhos — este painel é para saber que aconteceu.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{status=\"401\"}[5m])) * 60"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 60 },
+              { "color": "red", "value": 600 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "403 por minuto",
+      "description": "Subindo sem 401 junto costuma ser conta legítima batendo em permissão que não tem — erro de configuração de papel, não ataque.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{status=\"403\"}[5m])) * 60"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 1 }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "429 por minuto",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{status=\"429\"}[5m])) * 60"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 1 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Respostas de autenticação e autorização",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{status=~\"401|403|429\"}[5m])) by (status, uri)",
+          "legendFormat": "{{status}} — {{uri}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "type": "logs",
+      "title": "Eventos de autenticação",
+      "description": "Login recusado, conta bloqueada e reuso de refresh token — este último é o sinal de token roubado, e o sistema revoga a família inteira quando o detecta.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{container=~\"crbap.*\"} |~ \"auth\\\\.(login|refresh|logout)\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

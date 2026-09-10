@@ -4,6 +4,7 @@ import com.caiocodes.crbap.audit.application.Auditable;
 import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.Contract;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import com.caiocodes.crbap.shared.application.ClientDirectory.ClientRef;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
 import com.caiocodes.crbap.shared.domain.DateRange;
@@ -50,6 +51,7 @@ public class RenewContractUseCase {
     private final ContractFinder finder;
     private final ContractBillingPort billings;
     private final DomainEventRecorder events;
+    private final BusinessMetrics metrics;
     private final Clock clock;
 
     /**
@@ -101,6 +103,7 @@ public class RenewContractUseCase {
                 "Contrato renovado pelo sucessor " + salvo.number());
         int cobrancas = billings.generateFor(ContractBillings.of(salvo));
 
+        metrics.contractRenewed(salvo.value().amount());
         log.info("contract.renewed de={} para={} number={} cobrancas={}",
                 atual.id(), salvo.id(), salvo.number(), cobrancas);
         return new RenewalResult(

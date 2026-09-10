@@ -1,0 +1,49 @@
+# Promtail: le o log dos containers e manda para o Loki.
+#
+# REGRA QUE NAO PODE SER QUEBRADA: so entra como LABEL o que tem baixa
+# cardinalidade. traceId, contractId e afins ficam no CONTEUDO da linha e sao
+# buscados com filtro (|= "b7d2a1") ou por campo do JSON (| json | traceId=...).
+# Label de alta cardinalidade estoura o Loki tao rapido quanto estouraria o
+# Prometheus -- cada valor distinto cria um fluxo novo.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Descoberta pelo daemon do Docker: pega qualquer container da stack sem
+  # precisar listar nome por nome.
+  - job_name: containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+
+    relabel_configs:
+      # O nome vem como "/crbap-postgres"; a barra atrapalha na consulta.
+      - source_labels: [__meta_docker_container_name]
+        regex: "/(.*)"
+        target_label: container
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: stream
+
+    pipeline_stages:
+      # Em prod a aplicacao escreve JSON de uma linha (logback-spring.xml).
+      # Em dev o log e texto colorido, e o estagio simplesmente nao casa --
+      # a linha continua indo para o Loki como texto, que e o que se quer.
+      - json:
+          expressions:
+            level: level
+            logger: logger_name
+            traceId: traceId
+      - labels:
+          level:
+      - timestamp:
+          source: "@timestamp"
+          format: RFC3339Nano
+          action_on_failure: fudge

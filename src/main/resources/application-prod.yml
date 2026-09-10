@@ -10,10 +10,12 @@ management:
   endpoints:
     web:
       exposure:
-        # /prometheus entra na fase 8, e fica exposto so na rede interna.
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
+      # never, e nao when-authorized: em producao o /health e publico (o
+      # balanceador consulta), e "pendingEvents: 4213" conta ao mundo o
+      # tamanho da fila e o estado interno do sistema.
       show-details: never
 
 springdoc:

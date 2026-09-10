@@ -1,0 +1,51 @@
+# Loki de desenvolvimento: tudo em disco local, sem object storage.
+#
+# Nao serve para producao (single binary, sem replicacao), e e exatamente o
+# que se quer aqui: sobe em segundos, guarda alguns dias de log e nao cobra
+# nada. Em producao a mesma configuracao aponta para S3/MinIO.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 7 dias. Log de desenvolvimento com retencao infinita so enche o disco --
+  # e a pergunta que o log responde ("o que aconteceu naquela requisicao?")
+  # quase nunca e feita sobre semana passada.
+  retention_period: 168h
+  # Um pico de log nao pode derrubar a maquina inteira.
+  ingestion_rate_mb: 8
+  ingestion_burst_size_mb: 16
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false

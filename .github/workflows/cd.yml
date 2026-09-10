@@ -1,0 +1,138 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write     # assinatura com Cosign por OIDC, sem chave guardada
+
+jobs:
+  # ==================================================================
+  # A imagem sempre e construida e publicada no GHCR. Este job funciona
+  # sem nenhum segredo alem do GITHUB_TOKEN, que ja vem pronto.
+  # ==================================================================
+  build-image:
+    name: Imagem
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix=,format=short
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true      # SLSA: de onde a imagem veio
+
+      - uses: sigstore/cosign-installer@v3
+      # Assina a imagem e prova que ela saiu deste pipeline. Mitiga
+      # OWASP A08 — integridade da cadeia de build.
+      - name: Assinar
+        run: >-
+          cosign sign --yes
+          ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+
+  # ==================================================================
+  # Os dois jobs abaixo so existem quando ha para onde publicar.
+  #
+  # A guarda "vars.STAGING_HOST != ''" e proposital: sem ela, todo push
+  # na main de um repositorio sem servidor configurado falharia, e o CD
+  # viraria um X vermelho permanente que ninguem mais olha. Configure a
+  # variavel em Settings > Variables para ligar o deploy.
+  # ==================================================================
+  deploy-staging:
+    name: Staging
+    needs: [build-image]
+    if: vars.STAGING_HOST != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publicar por SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/crbap
+            docker compose pull app
+            docker compose up -d --no-deps app
+            docker image prune -f
+
+      - name: Esperar ficar saudável
+        run: ./scripts/wait-healthy.sh "${{ vars.STAGING_URL }}"
+
+      - name: Smoke tests
+        run: ./scripts/smoke-test.sh "${{ vars.STAGING_URL }}"
+
+  deploy-production:
+    name: Produção
+    needs: [deploy-staging]
+    # Producao so por TAG. Merge na main vai para staging; ir para
+    # producao e um ato deliberado: git tag v1.2.0 && git push --tags.
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PRODUCTION_HOST != ''
+    runs-on: ubuntu-latest
+    environment:
+      # O freio de mao: exige aprovacao manual, configurada em
+      # Settings > Environments > Required reviewers.
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # Imagem se troca em dez segundos; dado errado nao volta. O backup
+      # vem ANTES da migracao, que e a parte irreversivel do deploy.
+      - name: Backup antes de migrar
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            docker exec crbap-postgres pg_dump -Fc -U crbap crbap \
+              > /backup/pre-deploy-$(date +%F-%H%M).dump
+
+      - name: Publicar
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/crbap
+            docker compose pull app
+            docker compose up -d --no-deps app
+
+      - name: Verificar saúde
+        run: ./scripts/wait-healthy.sh "${{ vars.PRODUCTION_URL }}"
+
+      - name: Smoke tests
+        run: ./scripts/smoke-test.sh "${{ vars.PRODUCTION_URL }}"

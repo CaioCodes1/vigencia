@@ -1,0 +1,103 @@
+# Regras de alerta.
+#
+# A divisao e proposital: "negocio" alerta sobre o que a empresa perde;
+# "aplicacao" sobre o que o plantao conserta. Quem e acordado as 3h muda
+# conforme o grupo.
+
+groups:
+  - name: crbap-negocio
+    rules:
+      # O alerta mais importante do sistema. A outbox parada significa que
+      # NENHUM aviso esta saindo -- e o modo de falha e silencioso: a API
+      # responde 200, o contrato e renovado, e o cliente simplesmente nao e
+      # avisado. Sem esta regra, a descoberta vem por reclamacao, semanas
+      # depois.
+      - alert: OutboxAcumulando
+        expr: crbap_outbox_pending > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Eventos parados na outbox — notificações não estão saindo"
+          runbook: "12 — Observabilidade, seção Runbook"
+
+      # 26h e nao 24h: o job roda as 3h, e um atraso de duas horas (restart,
+      # trava do ShedLock ainda no ar) nao e incidente. Alerta que dispara
+      # sozinho e alerta que se aprende a ignorar.
+      - alert: VarreduraDiariaNaoRodou
+        expr: >-
+          time() - crbap_scheduler_last_success_timestamp{job="contract-expiration-scan"}
+          > 93600
+        labels:
+          severity: critical
+        annotations:
+          summary: "A varredura de vencimentos não roda há mais de 26h"
+
+      - alert: AvisosFalhandoNoEnvio
+        expr: >-
+          sum(rate(crbap_notifications_sent_total{result="failure"}[15m]))
+          / clamp_min(sum(rate(crbap_notifications_sent_total[15m])), 0.001) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mais de 20% dos avisos estão falhando no envio"
+
+      - alert: DlqComMensagens
+        expr: rabbitmq_queue_messages{queue="crbap.dlq"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mensagem na DLQ — consumidor rejeitou algo permanentemente"
+
+  - name: crbap-aplicacao
+    rules:
+      - alert: TaxaDeErroAlta
+        expr: >-
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(http_server_requests_seconds_count[5m])), 0.001) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mais de 1% das requisições respondendo 5xx"
+
+      - alert: LatenciaP95Alta
+        expr: >-
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (le, uri)) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 acima de 300 ms em {{ $labels.uri }}"
+
+      # Pool esgotado quase sempre e transacao longa ou chamada externa dentro
+      # de @Transactional -- e aparece como lentidao generalizada, nao como
+      # erro. E o sintoma que mais engana no runbook.
+      - alert: PoolDeConexaoEsgotado
+        expr: hikaricp_connections_pending > 5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Requisições esperando conexão do pool"
+
+  - name: crbap-seguranca
+    rules:
+      - alert: PicoDe401
+        expr: sum(rate(http_server_requests_seconds_count{status="401"}[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Possível ataque de força bruta"
+
+      - alert: PicoDe429
+        expr: sum(rate(http_server_requests_seconds_count{status="429"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Rate limit disparando com frequência — ataque ou cliente mal configurado"

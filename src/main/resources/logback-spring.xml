@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Log legível para gente em dev, JSON de uma linha em produção.
+
+  O Loki (e qualquer coletor) indexa CAMPO, não texto solto. Um log
+  multi-linha — um stack trace, por exemplo — vira N entradas desconectadas
+  se não for estruturado, e a busca por traceId devolve a primeira linha da
+  exceção sem o resto.
+
+  O arquivo se chama logback-spring.xml, e não logback.xml, de propósito:
+  só a versão -spring é lida pelo Spring Boot com <springProfile> ativo.
+  Com o nome errado, os dois blocos abaixo seriam ignorados em silêncio e o
+  log sairia sempre no padrão.
+-->
+<configuration>
+
+    <!-- Cores e uma linha por evento. O traceId aparece entre colchetes:
+         é ele que liga o log ao gráfico e à requisição. -->
+    <springProfile name="dev,test,default">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%X{traceId:-}] %cyan(%logger{28}) - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Só o que a aplicação coloca no MDC. Copiar o MDC inteiro
+                     arrisca vazar o que alguém puser lá sem pensar. -->
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <customFields>{"app":"crbap","env":"${ENV:-prod}"}</customFields>
+                <!-- Stack trace inteiro num campo só, e não uma linha por
+                     frame. Sem isto, o erro chega ao Loki picado. -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>40</maxDepthPerThrowable>
+                    <maxLength>8192</maxLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+        </appender>
+
+        <!-- Saída no stdout, sem arquivo: quem coleta é o Promtail lendo o
+             log do container. Aplicação em container escrevendo em disco
+             próprio é log que some junto com o container. -->
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+
+        <!-- O SQL do Hibernate em DEBUG dobra o volume de log e não responde
+             nada que a métrica de latência já não diga. -->
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.springframework.web" level="INFO"/>
+    </springProfile>
+
+</configuration>

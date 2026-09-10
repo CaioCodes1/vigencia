@@ -1,0 +1,32 @@
+# Datasources provisionados por arquivo, nao clicados na interface.
+#
+# Grafana configurado a mao e configuracao que morre com o volume: quem
+# derrubar a stack com "down -v" perde tudo e nao sabe reconstruir. Aqui o
+# arquivo E a configuracao, versionada junto com o codigo.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      # Liga o gráfico ao log: um traceId no conteúdo da linha vira link.
+      # É o que transforma três ferramentas soltas em uma investigação de
+      # dois cliques.
+      derivedFields:
+        - name: traceId
+          matcherRegex: '"traceId":"([^"]+)"'
+          url: '$${__value.raw}'
+          datasourceUid: loki

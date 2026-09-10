@@ -1,6 +1,7 @@
 package com.caiocodes.crbap.billing.infrastructure.scheduler;
 
 import com.caiocodes.crbap.billing.application.MarkOverdueBillingsUseCase;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Component;
 public class BillingOverdueJob {
 
     private final MarkOverdueBillingsUseCase markOverdue;
+    private final BusinessMetrics metrics;
 
     @Scheduled(cron = "${crbap.jobs.overdue-cron:0 30 3 * * *}", zone = "America/Sao_Paulo")
     @SchedulerLock(name = "overdue-billing-scan",
@@ -30,6 +32,7 @@ public class BillingOverdueJob {
     public void run() {
         long inicio = System.nanoTime();
         int marcadas = markOverdue.execute();
+        metrics.jobSucceeded("overdue-billing-scan");
         log.info("job.overdue_scan marcadas={} duracaoMs={}",
                 marcadas, (System.nanoTime() - inicio) / 1_000_000);
     }

@@ -1,0 +1,32 @@
+# Prometheus da pilha local (perfil "observability" do compose).
+#
+# O alvo padrao e a aplicacao rodando NO HOST (mvn spring-boot:run ou IDE),
+# que e o fluxo do dia a dia descrito no CLAUDE.md. Subindo a app em
+# container (docker compose --profile app up -d), troque o target por
+# "app:8080" -- e so isso.
+#
+# A rota /actuator/prometheus nao pede token, mas so responde para a rede
+# interna (ver InternalNetworkAuthorizationManager). O Docker Desktop entrega
+# a requisicao com origem em 192.168.65.x, que esta na faixa liberada.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    env: local
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: crbap
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: crbap
+    # - targets: ["app:8080"]     # quando a app sobe pelo perfil "app"
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

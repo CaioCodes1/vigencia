@@ -100,17 +100,40 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus e metrics entram na fase 8. Nao sao publicos: a rota do
+        # Prometheus e liberada so para a rede interna e o resto exige
+        # system:monitor. Ver SecurityConfig.
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       probes:
         enabled: true
-      show-details: never
+      show-details: when-authorized
+      group:
+        # A outbox entupida entra no READINESS, nunca no liveness: a aplicacao
+        # esta viva, so nao deve receber trafego. No liveness, o orquestrador
+        # reiniciaria em laco infinito uma aplicacao saudavel.
+        readiness:
+          include: readinessState,db,outbox
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
+  metrics:
+    tags:
+      application: crbap
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      # Os limites do alerta de latencia. Sem eles o histograma nao tem balde
+      # nessas faixas e o p95 vira estimativa grosseira.
+      slo:
+        http.server.requests: 100ms,300ms,500ms,1s
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 springdoc:
   api-docs:
@@ -163,6 +186,11 @@ crbap:
     # 4 minutos para um cache de 5: a chave global e recalculada antes de
     # expirar, e a janela fria some. Ver DashboardWarmupJob.
     dashboard-warmup-delay: 240000
+    # Os gauges de negocio sao recalculados aqui, e nao a cada scrape do
+    # Prometheus: quatro agregacoes por minuto em vez de quatro a cada 15s.
+    metrics-refresh-delay: 60000
+    # Acima disto o readiness cai. Conta so o que esta parado ha mais de 5 min.
+    outbox-health-threshold: 100
 
   audit:
     # Vazio = X-Forwarded-For ignorado, e vale o IP da conexao. Preencher

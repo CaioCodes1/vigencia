@@ -3,6 +3,7 @@ package com.caiocodes.crbap.contract.infrastructure.scheduler;
 import com.caiocodes.crbap.contract.application.AutoRenewContractsUseCase;
 import com.caiocodes.crbap.contract.application.ExpireContractsUseCase;
 import com.caiocodes.crbap.notification.application.ScanExpiringContractsUseCase;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -43,6 +44,7 @@ public class ContractExpiryJob {
     private final AutoRenewContractsUseCase autoRenew;
     private final ExpireContractsUseCase expireContracts;
     private final ScanExpiringContractsUseCase scanExpiring;
+    private final BusinessMetrics metrics;
 
     /**
      * {@code lockAtLeastFor} de 5 min mesmo que o job leve segundos: sem ele,
@@ -59,6 +61,7 @@ public class ContractExpiryJob {
         int expirados = expireContracts.execute();
         int avisos = scanExpiring.execute();
 
+        metrics.jobSucceeded("contract-expiration-scan");
         log.info("job.contract_scan renovados={} expirados={} avisos={} duracaoMs={}",
                 renovados, expirados, avisos, (System.nanoTime() - inicio) / 1_000_000);
     }

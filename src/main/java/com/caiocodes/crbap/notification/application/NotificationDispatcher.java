@@ -8,6 +8,7 @@ import com.caiocodes.crbap.notification.domain.Notification;
 import com.caiocodes.crbap.notification.domain.NotificationChannel;
 import com.caiocodes.crbap.notification.domain.NotificationId;
 import com.caiocodes.crbap.notification.domain.NotificationRepository;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -37,14 +38,17 @@ public class NotificationDispatcher {
     private final NotificationRepository notifications;
     private final NotificationRenderer renderer;
     private final Map<NotificationChannel, NotificationSender> senders;
+    private final BusinessMetrics metrics;
     private final Clock clock;
 
     public NotificationDispatcher(NotificationRepository notifications,
                                   NotificationRenderer renderer,
                                   List<NotificationSender> senders,
+                                  BusinessMetrics metrics,
                                   Clock clock) {
         this.notifications = notifications;
         this.renderer = renderer;
+        this.metrics = metrics;
         this.clock = clock;
         // Se dois beans declararem o mesmo canal, o contexto se recusa a subir.
         // É o que se quer: dois remetentes de e-mail vivos ao mesmo tempo é uma
@@ -74,6 +78,8 @@ public class NotificationDispatcher {
         }
 
         SendResult resultado = enviar(sender, aviso);
+        metrics.notificationSent(aviso.type().name(), aviso.channel().name(),
+                resultado.success());
         if (resultado.success()) {
             aviso.markSent(clock.instant());
             notifications.save(aviso);

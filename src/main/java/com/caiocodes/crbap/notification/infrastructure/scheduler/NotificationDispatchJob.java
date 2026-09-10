@@ -1,6 +1,7 @@
 package com.caiocodes.crbap.notification.infrastructure.scheduler;
 
 import com.caiocodes.crbap.notification.application.DispatchNotificationsUseCase;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -31,12 +32,14 @@ import org.springframework.stereotype.Component;
 public class NotificationDispatchJob {
 
     private final DispatchNotificationsUseCase dispatch;
+    private final BusinessMetrics metrics;
 
     @Scheduled(fixedDelayString = "${crbap.jobs.notification-dispatch-delay:60000}")
     @SchedulerLock(name = "notification-dispatch",
             lockAtLeastFor = "PT30S", lockAtMostFor = "PT5M")
     public void run() {
         int enviados = dispatch.execute();
+        metrics.jobSucceeded("notification-dispatch");
         if (enviados > 0) {
             log.info("job.notification_dispatch enviados={}", enviados);
         }

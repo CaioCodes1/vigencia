@@ -113,7 +113,113 @@ services:
           memory: 1g
     restart: unless-stopped
 
+  # ================================================================
+  # Observabilidade (fase 8) — docker compose --profile observability up -d
+  #
+  # Fica atras de um perfil de proposito: sao mais 4 containers e ~700 MB.
+  # No dia a dia nao precisa, e numa maquina apertada a diferenca entre
+  # subir e nao subir a stack e o build passar ou morrer de memoria.
+  #
+  # Prometheus  http://localhost:9090
+  # Grafana     http://localhost:3001   (admin / a senha do .env)
+  # Loki        http://localhost:3100
+  # ================================================================
+
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v3.1.0
+    container_name: crbap-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 15 dias: metrica local nao serve para analise historica, serve para
+      # enxergar a semana. Retencao infinita so enche disco.
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    # A app roda no host (IDE / mvn spring-boot:run) no fluxo do dia a dia.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    restart: unless-stopped
+
+  loki:
+    profiles: ["observability"]
+    image: grafana/loki:3.3.2
+    container_name: crbap-loki
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - lokidata:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    restart: unless-stopped
+
+  promtail:
+    profiles: ["observability"]
+    image: grafana/promtail:3.3.2
+    container_name: crbap-promtail
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      # Descoberta pelo daemon: pega qualquer container da stack sem listar
+      # nome por nome. Somente leitura -- o Promtail nao precisa de mais.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtaildata:/tmp
+    depends_on:
+      - loki
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    restart: unless-stopped
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.4.0
+    container_name: crbap-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      # Sem cadastro aberto e sem visita anonima, mesmo local: o painel mostra
+      # receita e inadimplencia da empresa.
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      # 3001 e nao 3000: a 3000 e a porta padrao de todo front em Node, e
+      # colidir com ela e questao de tempo.
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
   rabbitdata:
+  promdata:
+  lokidata:
+  promtaildata:
+  grafanadata:

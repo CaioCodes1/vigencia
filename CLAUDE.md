@@ -7,8 +7,9 @@ Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
 Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
 código nas fases 2 e 6.
 
-> **Estado: fases 1 a 7 de 8 concluídas (01–04/09/2026).** 342 testes verdes
-> (224 unitários + 118 de integração), 0 violações de Checkstyle.
+> **Estado: as 8 fases concluídas (01/09–10/09/2026).** 352 testes verdes
+> (224 unitários + 128 de integração), 84% de cobertura de linha, 0 violações de
+> Checkstyle.
 >
 > - **Fase 1** — build, migrações V1/V2, value objects (`Money`, `DateRange`,
 >   `Document`), erro padronizado, `traceId`, health checks, ArchUnit.
@@ -36,8 +37,13 @@ código nas fases 2 e 6.
 >   caso de uso e `changedFields` calculado; IP confiável só atrás de proxy
 >   declarado; e o dashboard com cache no Redis **com o escopo dentro da
 >   chave** — um serializador tipado por cache, sem *default typing*.
+> - **Fase 8** — observabilidade e CI/CD: métricas de negócio atrás de uma porta
+>   (gauge lendo memória, não o banco a cada scrape), log JSON para o Loki,
+>   health da outbox no readiness, 4 dashboards do Grafana provisionados por
+>   arquivo, alertas, `ci.yml` e `cd.yml`, smoke tests e o portão de cobertura
+>   em 80% finalmente ligado.
 >
-> **Próxima: fase 8 (observabilidade e CI/CD).**
+> **O roadmap acabou.** O que vier agora é melhoria, não fase — ver Pendências.
 
 ## Rodar
 
@@ -47,7 +53,9 @@ Sem entrada no `.claude/launch.json` da raiz (API pura, sem front).
 docker compose up -d      # infra: Postgres 5434, Redis 6380, RabbitMQ 5673
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 mvn test                  # unitários, sem Docker
-mvn verify                # inclui os *IT (Testcontainers)
+mvn verify                # inclui os *IT (Testcontainers) e o portao do JaCoCo
+
+docker compose --profile observability up -d   # Prometheus 9090, Grafana 3001
 ```
 
 **Portas:** Postgres na **5434** e app em container na **8081**, de propósito —
@@ -351,6 +359,61 @@ Fase 6 (notificações):
   mensalidade, então o valor é distribuído pelos dias e normalizado em 30. E os
   totais **somam sem separar moeda** — hoje toda a base é BRL; no dia em que não
   for, a correção é `GROUP BY currency`, não um fator de conversão.
+
+### Fase 8 — observabilidade e CI/CD
+
+- **O gauge lê memória, não o banco.** `Gauge.builder(nome, repo, Repo::count)`
+  — a forma que aparece em toda documentação — roda a consulta a **cada scrape**,
+  de 15 em 15 segundos, para sempre. Uma tarefa de um minuto atualiza
+  `AtomicLong`s e o gauge lê memória. Alvo de monitoramento que pesa no sistema
+  acaba desligado no primeiro incidente, que é quando ele importa. ADR-026.
+- **`BusinessGauges` NÃO tem `@SchedulerLock`** (terceira vez que a distinção
+  aparece): cada instância publica os próprios números e o Prometheus raspa
+  todas. Com a trava, duas de três reportariam zero para sempre.
+- **`/actuator/prometheus` é liberado por rede OU por `system:monitor`.** Um
+  coletor não renova access token de 15 minutos, e `permitAll` serviria a
+  contagem de contratos e o valor em atraso para a internet. ADR-027.
+- **Isso depende de `forward-headers-strategy: none` (fase 7).** O endereço
+  avaliado é o da conexão TCP. Em `framework`, o Spring o reescreve a partir do
+  `X-Forwarded-For` e qualquer um se declara `10.0.0.1`. **As duas mudam juntas.**
+- **O health da outbox conta só o que está parado há mais de 5 minutos.** Ativar
+  um contrato anual emite doze eventos de uma vez; a contagem crua derrubaria o
+  readiness num sistema saudável. Alarme que dispara sozinho é alarme ignorado.
+- **A outbox entra no `readiness`, nunca no `liveness`.** Com ela entupida a
+  aplicação está viva — no liveness, o orquestrador reiniciaria em laço infinito
+  algo que não tem defeito.
+- **O arquivo precisa se chamar `logback-spring.xml`.** Como `logback.xml`, o
+  Logback carrega antes do Spring e os blocos `<springProfile>` são ignorados
+  **em silêncio**.
+- **Nenhuma métrica leva id como rótulo**, e há um teste que verifica isso.
+  10.000 clientes × 5 status = 50.000 séries temporais. Id vai no log.
+- **O Promtail descobre pelo daemon do Docker**, não por caminho de arquivo:
+  aplicação em container que escreve o próprio log é log que some com o
+  container. Só `level` e `container` viram label.
+- **Spotless ficou de fora.** Ligá-lo reformataria mais de cem arquivos num
+  commit que não tem nada a ver com formatação, e o `git blame` dos arquivos mais
+  lidos iria junto. O Checkstyle já é o portão.
+- **`jacoco.check.skip` virou `false`.** Ficou ligado em `true` desde a fase 1 de
+  propósito: meta de 80% sobre um esqueleto só ensina a escrever teste de getter.
+  Hoje sobra folga (84%).
+- **`-DskipUnitTests` não existe no Maven.** Os unitários rodam de novo dentro do
+  `verify` — 20 segundos. O job separado no CI existe pelo feedback rápido, não
+  para economizar essa rodada.
+- **O `if` de um step não enxerga o `env` declarado no próprio step.** O
+  `SONAR_TOKEN` fica no nível do job; declarado no step, a condição avalia string
+  vazia sempre e o passo nunca roda.
+- **Os jobs de deploy são guardados por `vars.STAGING_HOST != ''`.** Sem isso,
+  todo push na `main` de um repositório sem servidor falharia, e o CD viraria um
+  X vermelho permanente. O `build-image` não é guardado: funciona só com o
+  `GITHUB_TOKEN`.
+- **O smoke test não testa regra de negócio.** Isso o CI já fez 352 vezes com
+  banco de verdade; repetir contra produção só cria dado de mentira na base do
+  cliente. Ele verifica ambiente — e a checagem mais importante é "a rota
+  protegida ainda devolve 401", porque um deploy com a segurança desligada
+  responde 200 em tudo e passaria por saudável.
+- **`wait-healthy.sh` espera o readiness, não o liveness.** O liveness responde
+  OK antes de o Flyway migrar; smoke test contra ele falha de forma
+  intermitente.
 ## Convenções
 
 Seguem as da raiz (`E:\projetos\CLAUDE.md`): documentação, comentários e
@@ -374,19 +437,31 @@ Específicas deste projeto:
 - **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
   commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
-- Fase 8 (observabilidade e CI/CD) é a próxima: Actuator + Micrometer,
-  métricas de negócio, log JSON, dashboards do Grafana, `HealthIndicator` da
-  outbox e os workflows do GitHub Actions.
+- **O roadmap acabou.** O que vem agora não é fase, é melhoria — e a primeira
+  delas é publicar. Nada aqui bloqueia nada.
+- **Alertmanager não existe.** As regras estão escritas e o Prometheus as
+  avalia, mas não há para onde mandar: alerta sem destinatário é gráfico
+  vermelho que ninguém vê. Entra com o primeiro canal real.
+- **Sem exporters de Postgres, Redis e RabbitMQ.** O alerta `DlqComMensagens`
+  depende do `rabbitmq_exporter` e fica inerte até ele existir.
+- **Os 4 dashboards do Grafana nunca foram abertos.** O JSON é válido e o
+  provisionamento está no lugar, mas a pilha não subiu nesta máquina — as
+  consultas PromQL foram escritas, não vistas na tela.
 - **Retenção da auditoria não existe.** `audit_logs` só cresce. O expurgo por
   período (ou o particionamento por mês) é trabalho de quando a tabela doer —
   a porta está aberta, porque `TRUNCATE` e `DROP PARTITION` não passam pelo
   gatilho.
 - **Login e logout não são auditados.** No login ainda não existe autor para o
-  aspecto resolver, e o IAM já registra tentativa falha, bloqueio e rate limit.
-  Entra junto com os eventos de segurança da fase 8.
+  aspecto resolver, e o IAM já registra tentativa falha, bloqueio e rate limit
+  em log. Vira linha de auditoria quando houver exigência de compliance.
 - **`crbap.audit.trusted-proxies` está vazio e `forward-headers-strategy` é
   `none`.** Correto para rodar sem proxy; ao publicar atrás de um balanceador,
-  os dois precisam ser preenchidos juntos — só um deles deixa o IP errado.
+  os dois precisam ser preenchidos juntos — só um deles deixa o IP errado. E
+  atenção: a liberação do `/actuator/prometheus` por rede depende do mesmo
+  `getRemoteAddr()`, então mexer em um afeta os dois.
+- **Spotless e `.editorconfig` ficaram de fora.** Entram quando houver uma
+  segunda pessoa no projeto — reformatar cem arquivos hoje só destruiria o
+  `git blame` dos arquivos mais lidos.
 - **A suíte de integração agora sobe três containers** (Postgres, Redis,
   RabbitMQ). Antes de rodar, subir o Docker com `D:\dev-tools\subir-docker.ps1`
   e conferir a folga de commit — ver a seção Ambiente abaixo.

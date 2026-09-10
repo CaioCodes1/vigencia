@@ -32,11 +32,12 @@
         <archunit.version>1.4.1</archunit.version>
         <shedlock.version>6.9.0</shedlock.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <logstash-encoder.version>8.0</logstash-encoder.version>
         <checkstyle.version>10.20.1</checkstyle.version>
-        <!-- Ligar na fase 4, quando existir logica de dominio suficiente para
-             a meta de 80% fazer sentido. Ligada agora, ela reprova um projeto
-             que ainda so tem esqueleto. -->
-        <jacoco.check.skip>true</jacoco.check.skip>
+        <!-- Ligado na fase 8, com o portao de qualidade. Ficou desligado ate
+             aqui de proposito: uma meta de 80% sobre um esqueleto so ensina a
+             escrever teste de getter. Com a suite atual sobra folga (84%). -->
+        <jacoco.check.skip>false</jacoco.check.skip>
     </properties>
 
     <dependencies>
@@ -160,8 +161,19 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- ============ entra na fase 8 ============
-             micrometer-registry-prometheus, logstash-logback-encoder -->
+        <!-- ============ fase 8: observabilidade ============ -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Log em JSON de uma linha no perfil prod. O Loki indexa campo, nao
+             texto solto: um stack trace multi-linha vira N entradas soltas. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-encoder.version}</version>
+        </dependency>
 
         <!-- ============ testes ============ -->
         <dependency>

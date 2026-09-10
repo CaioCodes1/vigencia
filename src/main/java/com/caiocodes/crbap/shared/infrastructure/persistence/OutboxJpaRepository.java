@@ -1,6 +1,7 @@
 package com.caiocodes.crbap.shared.infrastructure.persistence;
 
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -27,4 +28,13 @@ public interface OutboxJpaRepository extends JpaRepository<OutboxEventEntity, UU
     List<OutboxEventEntity> lockUnpublished(Pageable pageable);
 
     long countByPublishedAtIsNull();
+
+    /**
+     * Quantos eventos estao parados ha mais de X.
+     *
+     * <p>O corte por tempo e o que separa "lote recem-gravado" de "relay
+     * parado": ativar um contrato anual emite doze eventos de uma vez, e a
+     * contagem crua acusaria problema num sistema funcionando.
+     */
+    long countByPublishedAtIsNullAndOccurredAtBefore(Instant limite);
 }

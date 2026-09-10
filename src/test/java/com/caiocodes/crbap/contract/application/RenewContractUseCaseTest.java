@@ -6,6 +6,7 @@ import com.caiocodes.crbap.contract.domain.ContractId;
 import com.caiocodes.crbap.contract.application.port.ContractBillingPort;
 import com.caiocodes.crbap.contract.domain.ContractRepository;
 import com.caiocodes.crbap.contract.domain.NewContract;
+import com.caiocodes.crbap.shared.application.BusinessMetrics;
 import com.caiocodes.crbap.shared.application.DomainEventRecorder;
 import com.caiocodes.crbap.shared.domain.BillingCycle;
 import com.caiocodes.crbap.shared.domain.DateRange;
@@ -43,13 +44,14 @@ class RenewContractUseCaseTest {
     @Mock private ContractFinder finder;
     @Mock private ContractBillingPort billings;
     @Mock private DomainEventRecorder events;
+    @Mock private BusinessMetrics metrics;
 
     private RenewContractUseCase useCase;
 
     @BeforeEach
     void setUp() {
         Clock relogio = Clock.fixed(AGORA, ZoneOffset.UTC);
-        useCase = new RenewContractUseCase(contracts, finder, billings, events, relogio);
+        useCase = new RenewContractUseCase(contracts, finder, billings, events, metrics, relogio);
     }
 
     @Test

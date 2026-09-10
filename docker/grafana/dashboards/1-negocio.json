@@ -1,0 +1,118 @@
+{
+  "uid": "crbap-negocio",
+  "title": "CRBAP — Negócio",
+  "description": "O painel de quem é dono da empresa: contratos de pé, o que vence, e quanto está atrasado. Nenhum número de máquina aqui — CPU não responde nenhuma dessas perguntas.",
+  "tags": ["crbap", "negocio"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Contratos ativos",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "crbap_contracts_active" }],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "green" } },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Vencendo em 30 dias",
+      "description": "Pico repentino aqui é risco de receita concentrado num mês — e é o número que diz se o comercial precisa agir esta semana.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "crbap_contracts_expiring_30d" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 10 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Total em atraso",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "refId": "A", "expr": "crbap_billings_overdue_amount_BRL" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyBRL",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Renovações (24h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "increase(crbap_contracts_renewed_total[24h])" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Contratos ativos ao longo do tempo",
+      "description": "A curva importa mais que o valor: queda contínua é churn acontecendo devagar, que nenhum relatório mensal pega a tempo.",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        { "refId": "A", "expr": "crbap_contracts_active", "legendFormat": "ativos" },
+        { "refId": "B", "expr": "crbap_contracts_expiring_30d", "legendFormat": "vencendo em 30d" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Saldo em atraso",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        { "refId": "A", "expr": "crbap_billings_overdue_amount_BRL", "legendFormat": "em atraso" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "currencyBRL", "custom": { "fillOpacity": 20, "lineWidth": 2 } },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Valor renovado (soma por hora)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(crbap_contracts_renewed_value_BRL_sum[1h])",
+          "legendFormat": "renovado"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyBRL" }, "overrides": [] }
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+# Tres pushes seguidos no mesmo branch nao geram tres builds concorrentes:
+# o antigo e cancelado. Sem isto, a fila cresce e o feedback atrasa.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write   # CodeQL e Trivy publicam SARIF
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  # ==================================================================
+  # Feedback rapido: estilo e testes unitarios rodam em paralelo, sem
+  # Docker. Quem quebrou o Checkstyle sabe em 90 segundos.
+  # ==================================================================
+  lint:
+    name: Estilo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+      - name: Checkstyle
+        run: mvn -B -ntp checkstyle:check
+
+  unit-tests:
+    name: Testes unitários
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+      # Sem Docker: sao os *Test do Surefire, incluindo o ArchitectureTest.
+      - run: mvn -B -ntp test
+      - name: Relatório
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unitários
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+
+  # ==================================================================
+  # Testes de integracao com Testcontainers (Postgres, Redis, RabbitMQ)
+  # e o portao de cobertura do JaCoCo, que roda na fase verify.
+  #
+  # Os unitarios rodam DE NOVO aqui, dentro do verify. Sao ~20 segundos,
+  # e evitam inventar um -DskipSurefire so para nao repeti-los. O job
+  # acima existe pelo feedback rapido, nao para economizar essa rodada.
+  # ==================================================================
+  integration-tests:
+    name: Testes de integração
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+      - name: mvn verify
+        run: mvn -B -ntp verify
+      - name: Relatório
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Integração
+          path: target/failsafe-reports/*.xml
+          reporter: java-junit
+      - name: Cobertura (JaCoCo)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco
+          path: target/site/jacoco/
+      # Relatorio de teste que falhou e ninguem consegue abrir e tempo
+      # perdido duas vezes: no CI e na reproducao local.
+      - name: Relatórios brutos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+
+  security:
+    name: Segurança
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # o Gitleaks varre o histórico, não só o HEAD
+
+      - name: Segredos no código
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: CodeQL — init
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+      - name: Compilar para o CodeQL
+        run: mvn -B -ntp compile -DskipTests
+      - name: CodeQL — analisar
+        uses: github/codeql-action/analyze@v3
+
+      - name: Imagem para o scan
+        run: docker build -t crbap:scan -f docker/Dockerfile .
+
+      - name: Vulnerabilidades na imagem
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: crbap:scan
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          # CVSS >= 7 quebra o build. Abaixo disso vira issue e nao bloqueio:
+          # pipeline que reprova por tudo ensina o time a ignorar o pipeline.
+          exit-code: "1"
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy.sarif
+
+  # ==================================================================
+  # Sonar so roda se o segredo existir. Sem esta condicao, um fork ou um
+  # repositorio recem-publicado falha o CI inteiro por falta de token --
+  # e a primeira impressao do projeto e um X vermelho.
+  # ==================================================================
+  quality:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.event_name == 'pull_request'
+    # No nivel do job: o contexto env de um "if" de step nao enxerga o env
+    # declarado no proprio step.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # o Sonar precisa do histórico para "new code"
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+      - name: Análise + quality gate
+        if: env.SONAR_TOKEN != ''
+        run: >-
+          mvn -B -ntp verify sonar:sonar
+          -Dsonar.projectKey=caiocodes_contract-renewal-platform
+          -Dsonar.organization=caiocodes
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.qualitygate.wait=true
