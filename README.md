@@ -227,4 +227,4 @@ isso, um repositório sem servidor teria um CD vermelho permanente.
 
 ## Licença
 
-MIT.
+MIT — ver [LICENSE](LICENSE).
