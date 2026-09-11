@@ -1,8 +1,8 @@
 {
-  "uid": "crbap-seguranca",
-  "title": "CRBAP — Segurança",
+  "uid": "vigencia-seguranca",
+  "title": "Vigência — Segurança",
   "description": "401, 403 e 429 ao longo do tempo, e o log de autenticação. O que se procura aqui não é um pico isolado — é um padrão que se repete.",
-  "tags": ["crbap", "seguranca"],
+  "tags": ["vigencia", "seguranca"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -87,7 +87,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{container=~\"crbap.*\"} |~ \"auth\\\\.(login|refresh|logout)\""
+          "expr": "{container=~\"vigencia.*\"} |~ \"auth\\\\.(login|refresh|logout)\""
         }
       ],
       "options": {

@@ -21,7 +21,7 @@ springdoc:
 
 logging:
   level:
-    com.caiocodes.crbap: DEBUG
+    com.caiocodes.vigencia: DEBUG
     org.hibernate.SQL: DEBUG
     # Mostra o valor dos parametros do PreparedStatement. Util em dev,
     # PROIBIDO em producao: vaza dado de cliente para o log.

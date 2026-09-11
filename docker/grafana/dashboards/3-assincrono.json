@@ -1,8 +1,8 @@
 {
-  "uid": "crbap-assincrono",
-  "title": "CRBAP — Assíncrono",
+  "uid": "vigencia-assincrono",
+  "title": "Vigência — Assíncrono",
   "description": "O que ninguém vê até quebrar: outbox, jobs e envio de aviso. Este é o painel mais importante do sistema — todo o valor do produto passa por aqui, e todas as falhas são silenciosas.",
-  "tags": ["crbap", "assincrono"],
+  "tags": ["vigencia", "assincrono"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -15,7 +15,7 @@
       "description": "Se subir e não cair, o relay parou e NENHUM aviso está saindo. A API continua respondendo 200 — é o modo de falha mais perigoso da plataforma.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
-      "targets": [{ "refId": "A", "expr": "crbap_outbox_pending" }],
+      "targets": [{ "refId": "A", "expr": "vigencia_outbox_pending" }],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -40,7 +40,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - crbap_scheduler_last_success_timestamp{job=\"contract-expiration-scan\"}"
+          "expr": "time() - vigencia_scheduler_last_success_timestamp{job=\"contract-expiration-scan\"}"
         }
       ],
       "fieldConfig": {
@@ -66,7 +66,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(crbap_notifications_sent_total{result=\"success\"}[1h]))"
+          "expr": "sum(increase(vigencia_notifications_sent_total{result=\"success\"}[1h]))"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] }
@@ -79,7 +79,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(crbap_notifications_sent_total{result=\"failure\"}[1h]))"
+          "expr": "sum(increase(vigencia_notifications_sent_total{result=\"failure\"}[1h]))"
         }
       ],
       "fieldConfig": {
@@ -103,7 +103,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
       "targets": [
-        { "refId": "A", "expr": "crbap_outbox_pending", "legendFormat": "pendentes" }
+        { "refId": "A", "expr": "vigencia_outbox_pending", "legendFormat": "pendentes" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "short", "custom": { "fillOpacity": 20, "lineWidth": 2 } },
@@ -118,7 +118,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(crbap_notifications_sent_total[15m])) by (type, result)",
+          "expr": "sum(rate(vigencia_notifications_sent_total[15m])) by (type, result)",
           "legendFormat": "{{type}} — {{result}}"
         }
       ],
@@ -133,7 +133,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - crbap_scheduler_last_success_timestamp",
+          "expr": "time() - vigencia_scheduler_last_success_timestamp",
           "legendFormat": "{{job}}"
         }
       ],

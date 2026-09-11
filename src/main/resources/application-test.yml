@@ -7,7 +7,7 @@ spring:
   flyway:
     clean-disabled: false
 
-crbap:
+vigencia:
   security:
     # Números baixos deixam o teste de bloqueio e o de rate limit rápidos e
     # legíveis — sem eles seriam 5 chamadas só para chegar na fronteira.
@@ -38,6 +38,6 @@ crbap:
 
 logging:
   level:
-    com.caiocodes.crbap: DEBUG
+    com.caiocodes.vigencia: DEBUG
     org.testcontainers: INFO
     com.github.dockerjava: WARN

@@ -95,7 +95,7 @@ CREATE TRIGGER trg_audit_logs_immutable
 -- =====================================================================
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'crbap_app') THEN
-        EXECUTE 'REVOKE UPDATE, DELETE, TRUNCATE ON audit_logs FROM crbap_app';
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'vigencia_app') THEN
+        EXECUTE 'REVOKE UPDATE, DELETE, TRUNCATE ON audit_logs FROM vigencia_app';
     END IF;
 END $$;

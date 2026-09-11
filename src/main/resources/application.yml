@@ -1,13 +1,13 @@
 spring:
   application:
-    name: crbap
+    name: vigencia
 
   datasource:
     # Nenhum valor sensivel fica aqui. Os defaults servem so para o ambiente
     # local; em qualquer outro lugar vem tudo do ambiente.
-    url: ${DB_URL:jdbc:postgresql://localhost:5434/crbap}
-    username: ${DB_USER:crbap}
-    password: ${DB_PASSWORD:crbap}
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/vigencia}
+    username: ${DB_USER:vigencia}
+    password: ${DB_PASSWORD:vigencia}
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
       minimum-idle: 2
@@ -49,8 +49,8 @@ spring:
   rabbitmq:
     host: ${RABBIT_HOST:localhost}
     port: ${RABBIT_PORT:5673}
-    username: ${RABBIT_USER:crbap}
-    password: ${RABBIT_PASSWORD:crbap}
+    username: ${RABBIT_USER:vigencia}
+    password: ${RABBIT_PASSWORD:vigencia}
     # O broker responde "recebi". Sem isto, send() volta na hora e a aplicacao
     # acha que publicou mesmo quando a mensagem se perdeu no caminho.
     publisher-confirm-type: correlated
@@ -93,7 +93,7 @@ server:
   # a partir do X-Forwarded-For -- e um cabecalho e entrada do usuario. Sem
   # proxy real na frente, qualquer um passa a escolher o IP que a auditoria
   # grava. Ligar so onde existir proxy, e declarar a faixa dele em
-  # crbap.audit.trusted-proxies.
+  # vigencia.audit.trusted-proxies.
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
 
 management:
@@ -122,7 +122,7 @@ management:
       enabled: true
   metrics:
     tags:
-      application: crbap
+      application: vigencia
     distribution:
       percentiles-histogram:
         http.server.requests: true
@@ -142,10 +142,10 @@ springdoc:
     path: /swagger-ui
     operations-sorter: method
 
-crbap:
+vigencia:
   security:
-    issuer: crbap
-    audience: crbap-api
+    issuer: vigencia
+    audience: vigencia-api
     # PEM vindo do ambiente. Ausente fora de produção, um par efêmero é gerado
     # na subida (e todo token cai a cada restart); no perfil prod, a aplicação
     # se recusa a subir sem as chaves.
@@ -158,7 +158,7 @@ crbap:
     max-failed-attempts: 5
     lock-duration: 15m
     login-attempts-per-minute: 5
-    admin-email: ${ADMIN_EMAIL:admin@crbap.local}
+    admin-email: ${ADMIN_EMAIL:admin@vigencia.local}
     admin-initial-password: ${ADMIN_INITIAL_PASSWORD:}
 
   crypto:
@@ -203,9 +203,9 @@ crbap:
     # dump de produção dispara aviso de verdade para cliente de verdade — por
     # isso o padrão é desligado, e não ligado.
     smtp-enabled: ${SMTP_ENABLED:false}
-    from: ${NOTIFICATION_FROM:nao-responda@crbap.local}
+    from: ${NOTIFICATION_FROM:nao-responda@vigencia.local}
 
 logging:
   level:
     root: INFO
-    com.caiocodes.crbap: INFO
+    com.caiocodes.vigencia: INFO

@@ -1,4 +1,4 @@
-# contract-renewal-platform
+# vigencia
 
 Plataforma de renovação de contratos e automação de cobrança. **Segundo projeto
 Java do workspace** (o primeiro é o `billing-platform`).
@@ -72,7 +72,7 @@ formatação.**
 Os dois mexem com cobrança recorrente, e a semelhança é proposital — este é o
 passo seguinte, não uma repetição:
 
-| | billing-platform | contract-renewal-platform |
+| | billing-platform | vigencia |
 |---|---|---|
 | Organização | Pacote por feature, camadas `controller/service/repository/entity` | Clean Architecture: `domain` puro separado da `@Entity`, com portas e adaptadores |
 | Centro do domínio | Assinatura e fatura | **Contrato e sua renovação encadeada** (`previousContractId`) |
@@ -88,7 +88,7 @@ observabilidade — nada disso existe no `billing-platform`.
 ## Decisões que não são óbvias pelo código
 
 Todas justificadas no cofre do Obsidian, em
-`E:\huush automations\Contract Renewal Platform\` (22 notas: arquitetura,
+`E:\huush automations\Vigência\` (23 notas: arquitetura,
 modelagem, API, segurança, testes, DevOps, 12 ADRs e os roadmaps). As que mais
 geram "conserto" indevido:
 
@@ -190,7 +190,7 @@ Fase 4 (contratos):
 - **`ContractFinder` centraliza "fora do escopo responde 404, nunca 403".**
   Repetido em cada caso de uso, bastaria um esquecimento num endpoint novo para
   abrir o IDOR que os outros seis fecham.
-- **`crbap.jobs.enabled=false` no perfil de teste.** Com o agendador ligado, um
+- **`vigencia.jobs.enabled=false` no perfil de teste.** Com o agendador ligado, um
   job dispara no meio de um teste e muda o dado que ele está conferindo. Os
   testes chamam o caso de uso direto, com o `Clock` controlado.
 - **`created_by` é `ON DELETE SET NULL`.** Sem isso, apagar um usuário é
@@ -282,7 +282,7 @@ Fase 6 (notificações):
   tem resposta exata mesmo que o template mude depois.
 - **`th:text`, nunca `th:utext`.** É o escaping do Thymeleaf que impede um nome
   de cliente malicioso de virar script no cliente de e-mail de quem abrir.
-- **`crbap.notification.smtp-enabled` é `false` por padrão.** Ligar isso sem
+- **`vigencia.notification.smtp-enabled` é `false` por padrão.** Ligar isso sem
   querer com um dump de produção dispara aviso de verdade para cliente de
   verdade.
 - **`ExpiringContractsPort` é declarada em `notification`** e implementada por
@@ -296,7 +296,7 @@ Fase 6 (notificações):
 - **A trilha é imutável no banco, em duas camadas.** Um gatilho
   `BEFORE UPDATE OR DELETE` que levanta exceção (vale até para superusuário — é
   o que os testes conseguem verificar) e um `REVOKE UPDATE, DELETE, TRUNCATE`
-  condicional para o usuário `crbap_app` (vale em produção, onde a aplicação não
+  condicional para o usuário `vigencia_app` (vale em produção, onde a aplicação não
   é dona da tabela). Uma só das duas não cobre os dois ambientes.
 - **`audit_logs.actor_id` NÃO tem foreign key**, ao contrário do DDL da nota 07.
   `ON DELETE RESTRICT` tornaria impossível excluir um usuário para sempre;
@@ -326,7 +326,7 @@ Fase 6 (notificações):
 - **`server.forward-headers-strategy` virou `none`.** Com `framework`, o Spring
   reescreve `getRemoteAddr()` a partir do `X-Forwarded-For`, e sem proxy real na
   frente qualquer um escolhe o IP que a auditoria grava. O `ClientIpResolver` só
-  olha o cabeçalho quando o *peer* está em `crbap.audit.trusted-proxies`, e lê a
+  olha o cabeçalho quando o *peer* está em `vigencia.audit.trusted-proxies`, e lê a
   lista **da direita para a esquerda** — o começo dela é o que o cliente
   escreveu.
 - **Toda chave de cache do painel carrega o escopo** (`DashboardScope.cacheKey()`).
@@ -454,7 +454,7 @@ Específicas deste projeto:
 - **Login e logout não são auditados.** No login ainda não existe autor para o
   aspecto resolver, e o IAM já registra tentativa falha, bloqueio e rate limit
   em log. Vira linha de auditoria quando houver exigência de compliance.
-- **`crbap.audit.trusted-proxies` está vazio e `forward-headers-strategy` é
+- **`vigencia.audit.trusted-proxies` está vazio e `forward-headers-strategy` é
   `none`.** Correto para rodar sem proxy; ao publicar atrás de um balanceador,
   os dois precisam ser preenchidos juntos — só um deles deixa o IP errado. E
   atenção: a liberação do `/actuator/prometheus` por rede depende do mesmo

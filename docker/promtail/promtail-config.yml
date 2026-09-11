@@ -25,7 +25,7 @@ scrape_configs:
         refresh_interval: 15s
 
     relabel_configs:
-      # O nome vem como "/crbap-postgres"; a barra atrapalha na consulta.
+      # O nome vem como "/vigencia-postgres"; a barra atrapalha na consulta.
       - source_labels: [__meta_docker_container_name]
         regex: "/(.*)"
         target_label: container

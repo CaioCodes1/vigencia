@@ -20,16 +20,16 @@ RUN java -Djarmode=layertools -jar target/*.jar extract --destination extracted
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
 RUN apk add --no-cache curl tzdata \
- && addgroup -S crbap && adduser -S crbap -G crbap
+ && addgroup -S vigencia && adduser -S vigencia -G vigencia
 ENV TZ=America/Sao_Paulo
 
 WORKDIR /app
-COPY --from=build --chown=crbap:crbap /build/extracted/dependencies/ ./
-COPY --from=build --chown=crbap:crbap /build/extracted/spring-boot-loader/ ./
-COPY --from=build --chown=crbap:crbap /build/extracted/snapshot-dependencies/ ./
-COPY --from=build --chown=crbap:crbap /build/extracted/application/ ./
+COPY --from=build --chown=vigencia:vigencia /build/extracted/dependencies/ ./
+COPY --from=build --chown=vigencia:vigencia /build/extracted/spring-boot-loader/ ./
+COPY --from=build --chown=vigencia:vigencia /build/extracted/snapshot-dependencies/ ./
+COPY --from=build --chown=vigencia:vigencia /build/extracted/application/ ./
 
-USER crbap
+USER vigencia
 EXPOSE 8080
 
 # MaxRAMPercentage: a JVM le o limite do CONTAINER. Sem isso ela dimensiona o

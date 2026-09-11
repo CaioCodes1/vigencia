@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: crbap
+  - name: vigencia
     orgId: 1
-    folder: CRBAP
+    folder: Vigência
     type: file
     disableDeletion: false
     # O arquivo e a verdade: editar pela interface e valido para experimentar,

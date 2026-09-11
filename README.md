@@ -1,4 +1,4 @@
-# Contract Renewal & Billing Automation Platform
+# Vigência
 
 Backend que substitui a planilha de controle de contratos de empresas com
 receita recorrente: guarda os contratos, **avisa antes de vencer**, gera as
@@ -155,7 +155,7 @@ Dois contratos de API que valem a leitura:
 ## Estrutura
 
 ```
-src/main/java/com/caiocodes/crbap/
+src/main/java/com/caiocodes/vigencia/
 ├── shared/          # Money, DateRange, Document, outbox, métricas, erro HTTP
 ├── iam/             # usuários, papéis, permissões, tokens        (fase 2)
 ├── client/          # clientes e contatos                          (fase 3)
@@ -206,7 +206,7 @@ lenta.
 
 As 25 decisões arquiteturais completas — com contexto, alternativas descartadas
 e reversibilidade — estão nos ADRs do cofre do Obsidian em
-`E:\huush automations\Contract Renewal Platform\`.
+`E:\huush automations\Vigência\`.
 
 ---
 

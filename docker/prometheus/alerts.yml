@@ -5,7 +5,7 @@
 # conforme o grupo.
 
 groups:
-  - name: crbap-negocio
+  - name: vigencia-negocio
     rules:
       # O alerta mais importante do sistema. A outbox parada significa que
       # NENHUM aviso esta saindo -- e o modo de falha e silencioso: a API
@@ -13,7 +13,7 @@ groups:
       # avisado. Sem esta regra, a descoberta vem por reclamacao, semanas
       # depois.
       - alert: OutboxAcumulando
-        expr: crbap_outbox_pending > 100
+        expr: vigencia_outbox_pending > 100
         for: 5m
         labels:
           severity: critical
@@ -26,7 +26,7 @@ groups:
       # sozinho e alerta que se aprende a ignorar.
       - alert: VarreduraDiariaNaoRodou
         expr: >-
-          time() - crbap_scheduler_last_success_timestamp{job="contract-expiration-scan"}
+          time() - vigencia_scheduler_last_success_timestamp{job="contract-expiration-scan"}
           > 93600
         labels:
           severity: critical
@@ -35,8 +35,8 @@ groups:
 
       - alert: AvisosFalhandoNoEnvio
         expr: >-
-          sum(rate(crbap_notifications_sent_total{result="failure"}[15m]))
-          / clamp_min(sum(rate(crbap_notifications_sent_total[15m])), 0.001) > 0.2
+          sum(rate(vigencia_notifications_sent_total{result="failure"}[15m]))
+          / clamp_min(sum(rate(vigencia_notifications_sent_total[15m])), 0.001) > 0.2
         for: 10m
         labels:
           severity: warning
@@ -44,14 +44,14 @@ groups:
           summary: "Mais de 20% dos avisos estão falhando no envio"
 
       - alert: DlqComMensagens
-        expr: rabbitmq_queue_messages{queue="crbap.dlq"} > 0
+        expr: rabbitmq_queue_messages{queue="vigencia.dlq"} > 0
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: "Mensagem na DLQ — consumidor rejeitou algo permanentemente"
 
-  - name: crbap-aplicacao
+  - name: vigencia-aplicacao
     rules:
       - alert: TaxaDeErroAlta
         expr: >-
@@ -84,7 +84,7 @@ groups:
         annotations:
           summary: "Requisições esperando conexão do pool"
 
-  - name: crbap-seguranca
+  - name: vigencia-seguranca
     rules:
       - alert: PicoDe401
         expr: sum(rate(http_server_requests_seconds_count{status="401"}[5m])) > 10

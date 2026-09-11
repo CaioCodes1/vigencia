@@ -27,5 +27,5 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.caiocodes.crbap: INFO
+    com.caiocodes.vigencia: INFO
     org.hibernate.SQL: WARN

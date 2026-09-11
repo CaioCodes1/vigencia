@@ -34,7 +34,7 @@
                      arrisca vazar o que alguém puser lá sem pensar. -->
                 <includeMdcKeyName>traceId</includeMdcKeyName>
                 <includeMdcKeyName>userId</includeMdcKeyName>
-                <customFields>{"app":"crbap","env":"${ENV:-prod}"}</customFields>
+                <customFields>{"app":"vigencia","env":"${ENV:-prod}"}</customFields>
                 <!-- Stack trace inteiro num campo só, e não uma linha por
                      frame. Sem isto, o erro chega ao Loki picado. -->
                 <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">

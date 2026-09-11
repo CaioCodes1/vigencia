@@ -1,4 +1,4 @@
-name: crbap
+name: vigencia
 
 # Uso no dia a dia (recomendado):
 #   docker compose up -d                  -> so a infra; a app roda pela IDE / mvn spring-boot:run
@@ -8,9 +8,9 @@ name: crbap
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: crbap-postgres
+    container_name: vigencia-postgres
     environment:
-      POSTGRES_DB: crbap
+      POSTGRES_DB: vigencia
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       # Sem isso o Postgres inicializa o cluster em C, e ordenacao/ILIKE
@@ -21,7 +21,7 @@ services:
     ports:
       - "${DB_PORT:-5434}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d crbap"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d vigencia"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,7 +34,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: crbap-redis
+    container_name: vigencia-redis
     command: >
       redis-server --appendonly yes
       --requirepass ${REDIS_PASSWORD}
@@ -58,7 +58,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
-    container_name: crbap-rabbitmq
+    container_name: vigencia-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
@@ -84,13 +84,13 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: crbap-app
+    container_name: vigencia-app
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:postgresql://postgres:5432/crbap
+      DB_URL: jdbc:postgresql://postgres:5432/vigencia
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
@@ -128,7 +128,7 @@ services:
   prometheus:
     profiles: ["observability"]
     image: prom/prometheus:v3.1.0
-    container_name: crbap-prometheus
+    container_name: vigencia-prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -154,7 +154,7 @@ services:
   loki:
     profiles: ["observability"]
     image: grafana/loki:3.3.2
-    container_name: crbap-loki
+    container_name: vigencia-loki
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./docker/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
@@ -170,7 +170,7 @@ services:
   promtail:
     profiles: ["observability"]
     image: grafana/promtail:3.3.2
-    container_name: crbap-promtail
+    container_name: vigencia-promtail
     command: -config.file=/etc/promtail/promtail-config.yml
     volumes:
       - ./docker/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
@@ -189,7 +189,7 @@ services:
   grafana:
     profiles: ["observability"]
     image: grafana/grafana:11.4.0
-    container_name: crbap-grafana
+    container_name: vigencia-grafana
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}

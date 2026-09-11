@@ -131,12 +131,12 @@ jobs:
         uses: github/codeql-action/analyze@v3
 
       - name: Imagem para o scan
-        run: docker build -t crbap:scan -f docker/Dockerfile .
+        run: docker build -t vigencia:scan -f docker/Dockerfile .
 
       - name: Vulnerabilidades na imagem
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: crbap:scan
+          image-ref: vigencia:scan
           format: sarif
           output: trivy.sarif
           severity: HIGH,CRITICAL
@@ -176,7 +176,7 @@ jobs:
         if: env.SONAR_TOKEN != ''
         run: >-
           mvn -B -ntp verify sonar:sonar
-          -Dsonar.projectKey=caiocodes_contract-renewal-platform
+          -Dsonar.projectKey=caiocodes_vigencia
           -Dsonar.organization=caiocodes
           -Dsonar.host.url=https://sonarcloud.io
           -Dsonar.qualitygate.wait=true

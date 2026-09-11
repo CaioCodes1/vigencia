@@ -1,8 +1,8 @@
 {
-  "uid": "crbap-aplicacao",
-  "title": "CRBAP — Aplicação",
+  "uid": "vigencia-aplicacao",
+  "title": "Vigência — Aplicação",
   "description": "O painel do plantão: está lento? está errando? o pool acabou? Ordem de leitura: erro, latência, pool, JVM.",
-  "tags": ["crbap", "aplicacao"],
+  "tags": ["vigencia", "aplicacao"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,

@@ -83,7 +83,7 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /opt/crbap
+            cd /opt/vigencia
             docker compose pull app
             docker compose up -d --no-deps app
             docker image prune -f
@@ -117,7 +117,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            docker exec crbap-postgres pg_dump -Fc -U crbap crbap \
+            docker exec vigencia-postgres pg_dump -Fc -U vigencia vigencia \
               > /backup/pre-deploy-$(date +%F-%H%M).dump
 
       - name: Publicar
@@ -127,7 +127,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /opt/crbap
+            cd /opt/vigencia
             docker compose pull app
             docker compose up -d --no-deps app
 

@@ -1,8 +1,8 @@
 {
-  "uid": "crbap-negocio",
-  "title": "CRBAP — Negócio",
+  "uid": "vigencia-negocio",
+  "title": "Vigência — Negócio",
   "description": "O painel de quem é dono da empresa: contratos de pé, o que vence, e quanto está atrasado. Nenhum número de máquina aqui — CPU não responde nenhuma dessas perguntas.",
-  "tags": ["crbap", "negocio"],
+  "tags": ["vigencia", "negocio"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
@@ -14,7 +14,7 @@
       "title": "Contratos ativos",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
-      "targets": [{ "refId": "A", "expr": "crbap_contracts_active" }],
+      "targets": [{ "refId": "A", "expr": "vigencia_contracts_active" }],
       "fieldConfig": {
         "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "green" } },
         "overrides": []
@@ -26,7 +26,7 @@
       "description": "Pico repentino aqui é risco de receita concentrado num mês — e é o número que diz se o comercial precisa agir esta semana.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
-      "targets": [{ "refId": "A", "expr": "crbap_contracts_expiring_30d" }],
+      "targets": [{ "refId": "A", "expr": "vigencia_contracts_expiring_30d" }],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -47,7 +47,7 @@
       "title": "Total em atraso",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
-      "targets": [{ "refId": "A", "expr": "crbap_billings_overdue_amount_BRL" }],
+      "targets": [{ "refId": "A", "expr": "vigencia_billings_overdue_amount_BRL" }],
       "fieldConfig": {
         "defaults": {
           "unit": "currencyBRL",
@@ -68,7 +68,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "increase(crbap_contracts_renewed_total[24h])" }
+        { "refId": "A", "expr": "increase(vigencia_contracts_renewed_total[24h])" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] }
     },
@@ -79,8 +79,8 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
       "targets": [
-        { "refId": "A", "expr": "crbap_contracts_active", "legendFormat": "ativos" },
-        { "refId": "B", "expr": "crbap_contracts_expiring_30d", "legendFormat": "vencendo em 30d" }
+        { "refId": "A", "expr": "vigencia_contracts_active", "legendFormat": "ativos" },
+        { "refId": "B", "expr": "vigencia_contracts_expiring_30d", "legendFormat": "vencendo em 30d" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 2 } },
@@ -93,7 +93,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
       "targets": [
-        { "refId": "A", "expr": "crbap_billings_overdue_amount_BRL", "legendFormat": "em atraso" }
+        { "refId": "A", "expr": "vigencia_billings_overdue_amount_BRL", "legendFormat": "em atraso" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "currencyBRL", "custom": { "fillOpacity": 20, "lineWidth": 2 } },
@@ -108,7 +108,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "increase(crbap_contracts_renewed_value_BRL_sum[1h])",
+          "expr": "increase(vigencia_contracts_renewed_value_BRL_sum[1h])",
           "legendFormat": "renovado"
         }
       ],
