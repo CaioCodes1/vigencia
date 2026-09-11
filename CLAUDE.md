@@ -1,11 +1,18 @@
-# vigencia
+# Vigência
 
 Plataforma de renovação de contratos e automação de cobrança. **Segundo projeto
 Java do workspace** (o primeiro é o `billing-platform`).
 
-Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct ·
-Testcontainers. Redis e RabbitMQ já estão no `compose.yaml`, mas entram no
-código nas fases 2 e 6.
+Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct · Redis ·
+RabbitMQ · Prometheus · Grafana · Loki · Testcontainers.
+
+> **O nome mudou em 11/09/2026.** Chamava-se `contract-renewal-platform`, com o
+> acrônimo `crbap` por dentro. Se `crbap` aparecer em algum lugar, é resquício —
+> e resquício aqui é perigoso, porque o nome vive em cinco camadas que só
+> funcionam se baterem entre si: o pacote Java, o prefixo das properties, os
+> nomes de métrica (Java + alertas + dashboards), as filas do RabbitMQ e o
+> issuer do JWT. Só a primeira falha de forma barulhenta; as outras falham em
+> silêncio.
 
 > **Estado: as 8 fases concluídas (01/09–10/09/2026).** 352 testes verdes
 > (224 unitários + 128 de integração), 84% de cobertura de linha, 0 violações de
@@ -87,9 +94,9 @@ observabilidade — nada disso existe no `billing-platform`.
 
 ## Decisões que não são óbvias pelo código
 
-Todas justificadas no cofre do Obsidian, em
-`E:\huush automations\Vigência\` (23 notas: arquitetura,
-modelagem, API, segurança, testes, DevOps, 12 ADRs e os roadmaps). As que mais
+Todas justificadas num cofre do Obsidian mantido fora do repositório: 23 notas
+de arquitetura, modelagem, API, segurança, testes e DevOps, com **27 ADRs** que
+registram contexto, alternativas descartadas e reversibilidade. As que mais
 geram "conserto" indevido:
 
 - **O domínio não importa Spring nem JPA.** Não é preciosismo: é o que faz
@@ -416,8 +423,8 @@ Fase 6 (notificações):
   intermitente.
 ## Convenções
 
-Seguem as da raiz (`E:\projetos\CLAUDE.md`): documentação, comentários e
-mensagens de erro em português; código em inglês; commits `tipo: descrição`.
+Documentação, comentários e mensagens de erro em português; código em inglês;
+commits `tipo: descrição`.
 
 Específicas deste projeto:
 
@@ -434,8 +441,8 @@ Específicas deste projeto:
 
 ## Pendências
 
-- **Publicar em `CaioCodes1/`** — o repositório já existe em `main` com dois
-  commits, mas **sem remoto**. Enquanto não for publicado, continua na mesma
+- **Publicar em `CaioCodes1/vigencia`** — o repositório está versionado em
+  `main`, mas **sem remoto**. Enquanto não for publicado, continua na mesma
   situação do `bank-api`: existe só neste disco.
 - **O roadmap acabou.** O que vem agora não é fase, é melhoria — e a primeira
   delas é publicar. Nada aqui bloqueia nada.
@@ -463,8 +470,8 @@ Específicas deste projeto:
   segunda pessoa no projeto — reformatar cem arquivos hoje só destruiria o
   `git blame` dos arquivos mais lidos.
 - **A suíte de integração agora sobe três containers** (Postgres, Redis,
-  RabbitMQ). Antes de rodar, subir o Docker com `D:\dev-tools\subir-docker.ps1`
-  e conferir a folga de commit — ver a seção Ambiente abaixo.
+  RabbitMQ). O Docker precisa estar de pé antes de rodar `mvn verify` —
+  a suíte não sobe container sozinha.
 - **`contract_items` não foi criada.** O DDL da nota 07 a prevê, mas o agregado
   não tem itens e tabela sem código é peso morto. Entra quando houver caso de uso.
 - **`GET /clients/{id}/contracts` não existe** — use `GET /contracts?clientId=`.
@@ -476,19 +483,6 @@ Específicas deste projeto:
 - O painel **soma sem separar moeda** e o **MRR é aproximado** (valor do período
   distribuído por dia). Vira `GROUP BY currency` quando existir contrato fora do
   BRL.
-- **Ambiente (02/09, parcialmente resolvido):** o Maven morria com
-  `insufficient memory` e o Docker caía junto porque o limite de commit do
-  Windows era ~17 GB (pagefile de 800 MB). Hoje a garantia é o **pagefile fixo
-  de 4 GB no `C:`** (limite de 20.389 MB) — o do `D:`, apesar de configurado,
-  **não é criado no boot**. Se voltar a acontecer, **medir o commit antes de
-  culpar o Docker** — ver a seção Discos do `E:\projetos\CLAUDE.md`.
-- **Docker Desktop 4.87 deixa socket órfão e não sobe (recorrente).** O backend
-  morre com `remove ...sock: The file cannot be accessed by the system` em
-  `%LOCALAPPDATA%\Docker\run` e `%LOCALAPPDATA%\docker-secrets-engine`. Os
-  arquivos **não podem ser apagados** (`del` falha); o que funciona é
-  **renomear o diretório inteiro** e recriá-lo vazio. Aconteceu 18 vezes entre
-  23/08 e 03/09 — os diretórios renomeados estão acumulados no `AppData` e
-  podem ser apagados.
 - Falta gestão de usuários pela API (`POST /users`, conceder/revogar papéis).
   Hoje só existe leitura; usuário novo depende do `AdminBootstrap`.
 - O limite de rate limit **por e-mail** (além do por IP) ainda não existe.

@@ -204,9 +204,9 @@ lenta.
 | `noRollbackFor` no login | Sem isso, o rollback desfaz o incremento do contador e o bloqueio por força bruta nunca acontece |
 | `f_unaccent` como função IMMUTABLE | `unaccent()` é STABLE e não pode ser indexado; sem o wrapper, o índice de busca por nome não é criado |
 
-As 25 decisões arquiteturais completas — com contexto, alternativas descartadas
-e reversibilidade — estão nos ADRs do cofre do Obsidian em
-`E:\huush automations\Vigência\`.
+As 27 decisões arquiteturais completas — com contexto, alternativas descartadas
+e reversibilidade — estão registradas como ADRs num cofre do Obsidian mantido
+fora do repositório.
 
 ---
 
