@@ -46,15 +46,35 @@ esquecida, e nenhuma métrica de renovação.
 Pré-requisitos: JDK 21, Maven 3.9+ e Docker.
 
 ```bash
-cp .env.example .env      # e preencha as senhas
+cp .env.example .env
 docker compose up -d      # Postgres 5434, Redis 6380, RabbitMQ 5673/15673
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+> **Defina `ADMIN_INITIAL_PASSWORD` no `.env` (mínimo 12 caracteres) antes de
+> subir.** Sem ela nenhum usuário é criado, e não há como autenticar — a
+> aplicação sobe normalmente e avisa só por um `WARN` no log. É de propósito:
+> sistema que nasce com `admin/admin` é como começa a maioria dos incidentes.
+> O primeiro acesso exige troca de senha.
+
+As chaves de cifra (`DATA_ENCRYPTION_KEY`, `BLIND_INDEX_KEY`) e o par RSA do JWT
+podem ficar vazios fora de produção — um par efêmero é gerado na subida, e todo
+token cai a cada restart. No perfil `prod` a aplicação se recusa a subir sem eles.
+
+### Só quer conferir se funciona?
+
+```bash
+mvn verify
+```
+
+Sobe Postgres, Redis e RabbitMQ pelo Testcontainers, roda os 352 testes e gera o
+relatório de cobertura em `target/site/jacoco/index.html`. Não precisa de `.env`
+nem do `compose`.
+
 | | URL |
 |---|---|
 | API | http://localhost:8080/api/v1 |
-| Swagger (perfil `dev`) | http://localhost:8080/swagger-ui |
+| Swagger (desligado no perfil `prod`) | http://localhost:8080/swagger-ui |
 | Health | http://localhost:8080/actuator/health |
 | RabbitMQ (painel) | http://localhost:15673 |
 
