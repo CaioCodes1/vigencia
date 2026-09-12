@@ -19,7 +19,17 @@ RUN java -Djarmode=layertools -jar target/*.jar extract --destination extracted
 # ---------- estagio 3: runtime ----------
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
-RUN apk add --no-cache curl tzdata \
+# O `apk upgrade` roda ANTES do add: a imagem do Temurin costuma vir alguns
+# dias atras do indice da Alpine, e as CVEs de openssl/libssl3/libcrypto3 que
+# o Trivy aponta ja tem correcao publicada no repositorio -- so nao chegaram
+# na imagem base ainda. Sem esta linha, o scan do CI reprova por algo que nao
+# depende do nosso codigo e nao temos como corrigir de outro jeito.
+#
+# O custo e determinismo: duas construcoes da mesma tag podem trazer pacotes
+# diferentes. Aceito aqui porque a alternativa e publicar imagem com falha
+# conhecida, e porque quem fixa a versao do que importa e o jar, nao o SO.
+RUN apk upgrade --no-cache \
+ && apk add --no-cache curl tzdata \
  && addgroup -S vigencia && adduser -S vigencia -G vigencia
 ENV TZ=America/Sao_Paulo
 
