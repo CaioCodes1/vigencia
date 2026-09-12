@@ -29,10 +29,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # O nome do dono vem com a caixa original do GitHub (CaioCodes1), e
+      # referencia OCI so aceita minuscula: o cosign recusa a de cima com
+      # "could not parse reference". Um passo so, usado pelos dois lugares.
+      - name: Nome da imagem em minusculas
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ steps.img.outputs.name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -56,7 +63,7 @@ jobs:
       - name: Assinar
         run: >-
           cosign sign --yes
-          ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          ${{ steps.img.outputs.name }}@${{ steps.build.outputs.digest }}
 
   # ==================================================================
   # Os dois jobs abaixo so existem quando ha para onde publicar.

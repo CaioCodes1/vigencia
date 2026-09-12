@@ -83,7 +83,7 @@ jobs:
         if: always()
         with:
           name: Integração
-          path: target/failsafe-reports/*.xml
+          path: target/failsafe-reports/TEST-*.xml
           reporter: java-junit
       - name: Cobertura (JaCoCo)
         uses: actions/upload-artifact@v4
@@ -134,7 +134,7 @@ jobs:
         run: docker build -t vigencia:scan -f docker/Dockerfile .
 
       - name: Vulnerabilidades na imagem
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: vigencia:scan
           format: sarif
