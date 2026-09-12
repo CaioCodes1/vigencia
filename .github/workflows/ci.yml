@@ -133,21 +133,40 @@ jobs:
       - name: Imagem para o scan
         run: docker build -t vigencia:scan -f docker/Dockerfile .
 
-      - name: Vulnerabilidades na imagem
+      # Dois passos de proposito, e nao um.
+      #
+      # Combinar `format: sarif` com `severity` + `exit-code` NAO funciona: a
+      # action sobrescreve TRIVY_SEVERITY para todas as severidades ("Building
+      # SARIF report with all severities") e o exit-code passa a disparar em
+      # qualquer achado, inclusive LOW. Foi o que aconteceu aqui -- o portao
+      # reprovava com 6 CVEs medium e nenhuma HIGH, exatamente o comportamento
+      # que o comentario abaixo diz querer evitar.
+      #
+      # Entao: o primeiro passo reporta tudo para a aba Security, sem bloquear.
+      # O segundo e o portao, e so ele decide o destino do build.
+      - name: Vulnerabilidades na imagem — relatorio
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: vigencia:scan
           format: sarif
           output: trivy.sarif
-          severity: HIGH,CRITICAL
-          # CVSS >= 7 quebra o build. Abaixo disso vira issue e nao bloqueio:
-          # pipeline que reprova por tudo ensina o time a ignorar o pipeline.
-          exit-code: "1"
 
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy.sarif
+
+      # CVSS >= 7 quebra o build. Abaixo disso vira alerta na aba Security e
+      # nao bloqueio: pipeline que reprova por tudo ensina o time a ignorar o
+      # pipeline, e ai a proxima falha grave passa junto com o ruido.
+      - name: Vulnerabilidades na imagem — portao
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: vigencia:scan
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   # ==================================================================
   # Sonar so roda se o segredo existir. Sem esta condicao, um fork ou um

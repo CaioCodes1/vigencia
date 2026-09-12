@@ -13,7 +13,10 @@ import java.util.regex.Pattern;
  */
 public class ClientContact {
 
-    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    /** Mesma expressao do {@link Client}: ver la o porque do ponto fora das
+     * classes do dominio (ReDoS polinomial). */
+    private static final Pattern EMAIL =
+            Pattern.compile("^[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+$");
 
     private final UUID id;
     private String name;

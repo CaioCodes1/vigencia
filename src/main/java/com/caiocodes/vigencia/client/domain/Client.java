@@ -35,7 +35,22 @@ import java.util.regex.Pattern;
  */
 public class Client extends AggregateRoot<ClientId> {
 
-    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    /**
+     * O ponto fica <b>fora</b> das classes do dominio de proposito.
+     *
+     * <p>A versao anterior era {@code ^[^@\s]+@[^@\s]+\.[^@\s]+$}, e nela o
+     * {@code [^@\s]} tambem casava com ponto. Isso deixa a divisao entre
+     * "antes do ponto" e "depois do ponto" ambigua, e o motor precisa testar
+     * todas as combinacoes: entrada como {@code a@} seguida de muitos
+     * {@code !.} custa tempo quadratico. E ReDoS polinomial, apontado pelo
+     * CodeQL, e o e-mail vem do corpo da requisicao.
+     *
+     * <p>Excluindo o ponto das classes, cada separador tem uma leitura so e
+     * nao ha backtracking. De quebra fica mais correto: recusa {@code a@b..c}
+     * e dominio terminado em ponto, que a versao anterior aceitava.
+     */
+    private static final Pattern EMAIL =
+            Pattern.compile("^[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+$");
     private static final int MIN_NAME_LENGTH = 3;
 
     private final ClientId id;
