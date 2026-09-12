@@ -3,7 +3,7 @@
 Plataforma de renovação de contratos e automação de cobrança. **Segundo projeto
 Java do workspace** (o primeiro é o `billing-platform`).
 
-Java 21 · Spring Boot 3.5.3 · PostgreSQL 16 · Flyway · MapStruct · Redis ·
+Java 21 · Spring Boot 3.5 · PostgreSQL 16 · Flyway · MapStruct · Redis ·
 RabbitMQ · Prometheus · Grafana · Loki · Testcontainers.
 
 > **O nome mudou em 11/09/2026.** Chamava-se `contract-renewal-platform`, com o
