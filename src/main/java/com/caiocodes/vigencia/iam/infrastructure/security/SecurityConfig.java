@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authorization.AuthorityAuthorizationManager;
@@ -45,6 +46,47 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final JwtProperties properties;
 
+    /**
+     * Cadeia separada e de maior precedência só para a documentação.
+     *
+     * <p><b>Por que existe:</b> a CSP da API é {@code default-src 'none'}, e ela
+     * bloqueia o CSS e o JavaScript do próprio Swagger UI — a página abre em
+     * branco. Nenhum teste pegava isso, porque nenhum abre a interface num
+     * navegador; só apareceu ao rodar a aplicação e olhar a tela.
+     *
+     * <p><b>Por que não relaxar a CSP global:</b> isso enfraqueceria a política
+     * nos endpoints que devolvem dado de cliente. Aqui o alcance é só
+     * {@code /swagger-ui/**} e {@code /v3/api-docs/**}, que servem arquivo
+     * estático empacotado no jar e não leem nada do banco.
+     *
+     * <p>O {@code 'unsafe-inline'} é exigência do Swagger UI, que injeta estilo
+     * e script inline. Aceitável porque a origem é o próprio jar: não há entrada
+     * de usuário chegando nessas páginas para ser refletida.
+     */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain docsFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'none'; script-src 'self' 'unsafe-inline'; "
+                                        + "style-src 'self' 'unsafe-inline'; "
+                                        + "img-src 'self' data:; font-src 'self'; "
+                                        + "connect-src 'self'; frame-ancestors 'none'; "
+                                        + "base-uri 'none'"))
+                        .frameOptions(frame -> frame.deny())
+                        .referrerPolicy(referrer -> referrer.policy(
+                                ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31_536_000)))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .build();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -81,8 +123,6 @@ public class SecurityConfig {
                                                 .<RequestAuthorizationContext>hasAuthority(
                                                         "system:monitor")))
                         .requestMatchers("/actuator/**").hasAuthority("system:monitor")
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
-                            .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, AuthenticationFilter.class)
                 .exceptionHandling(ex -> ex
